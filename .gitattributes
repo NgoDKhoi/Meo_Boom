@@ -12,5 +12,15 @@
 *.ogg filter=lfs diff=lfs merge=lfs -text
 *.ttf filter=lfs diff=lfs merge=lfs -text
 *.otf filter=lfs diff=lfs merge=lfs -text
+
+# Đặt hành vi mặc định, để Git tự động xác định
+* text=auto
+# Các file text của Unity phải luôn dùng LF để đảm bảo tính nhất quán
+*.cs text eol=lf
+*.shader text eol=lf
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.meta text eol=lf
 *.bundle filter=lfs diff=lfs merge=lfs -text
 *.so filter=lfs diff=lfs merge=lfs -text
