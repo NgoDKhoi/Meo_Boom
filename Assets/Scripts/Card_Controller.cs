@@ -26,7 +26,7 @@ public class Card_Controller : MonoBehaviour
     public int sortingOrderWhenPlayed = 10;    // Order in Layer khi da danh ra
 
     [Tooltip("Vi tri se di chuyen toi khi nhan nut 'Danh bai'")]
-    public Vector3 playPosition = new Vector3(3.05f, -0.13f, 0f);
+    public Vector3 playPosition = new Vector3(0.14f, 0.91f, 0f); // vao game chinh, dung chinh o day
 
     void Start()
     {
