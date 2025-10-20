@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "296390677235",
+    "project_id": "mygametest2",
+    "storage_bucket": "mygametest2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:296390677235:android:8927440e41755b99a01d86",
+        "android_client_info": {
+          "package_name": "com.mygametest2.meono"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKV7K-qbIfhv8HiWsDKwXZoQpzvLJlre0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
