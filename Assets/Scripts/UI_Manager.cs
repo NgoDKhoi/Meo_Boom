@@ -5,6 +5,7 @@ public class UI_Manager : MonoBehaviour
     public GameObject panelMainLogin;
     public GameObject panelOptions;
     public GameObject panelEmailLogin;
+    public GameObject panelNotification;
 
     void Start()
     {
@@ -16,6 +17,7 @@ public class UI_Manager : MonoBehaviour
         panelMainLogin.SetActive(true);
         panelOptions.SetActive(false);
         panelEmailLogin.SetActive(false);
+        panelNotification.SetActive(false);
     }
 
     public void ShowLoginOptions()
@@ -23,6 +25,7 @@ public class UI_Manager : MonoBehaviour
         panelMainLogin.SetActive(false);
         panelOptions.SetActive(true);
         panelEmailLogin.SetActive(false);
+        panelNotification.SetActive(false);
     }
 
     public void ShowEmailLogin()
@@ -30,5 +33,6 @@ public class UI_Manager : MonoBehaviour
         panelMainLogin.SetActive(false);
         panelOptions.SetActive(false);
         panelEmailLogin.SetActive(true);
+        panelNotification.SetActive(false);
     }
 }
