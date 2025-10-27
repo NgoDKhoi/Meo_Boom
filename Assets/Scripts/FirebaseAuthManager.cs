@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using Firebase.Extensions;
 using UnityEngine.UI;
+using Firebase.Database; 
 
 public class FirebaseAuthManager : MonoBehaviour
 {
@@ -19,6 +20,38 @@ public class FirebaseAuthManager : MonoBehaviour
 
     private FirebaseAuth auth;
     private FirebaseUser user;
+    private FirebaseDatabase database;
+
+    private async void InitializeUserInDatabase(string userId, string email)
+    {
+        if (database == null)
+        {
+            Debug.LogError("Lỗi: Firebase Database chưa được khởi tạo thành công!");
+            return;
+        }
+
+        var dbReference = database.GetReference("users").Child(userId);
+
+        var dataSnapshot = await dbReference.GetValueAsync();
+
+        if (!dataSnapshot.Exists)
+        {
+            Debug.Log($"Người dùng mới {email} đang khởi tạo dữ liệu RTDB.");
+
+            var userInitialData = new System.Collections.Generic.Dictionary<string, object>
+        {
+            { "email", email },
+            { "score", 0L }
+        };
+
+            await dbReference.SetValueAsync(userInitialData);
+            Debug.Log("Khởi tạo dữ liệu người dùng thành công.");
+        }
+        else
+        {
+            Debug.Log($"Dữ liệu người dùng {email} đã tồn tại trên RTDB.");
+        }
+    }
 
     void Start()
     {
@@ -33,7 +66,18 @@ public class FirebaseAuthManager : MonoBehaviour
             if (dependencyStatus == DependencyStatus.Available)
             {
                 auth = FirebaseAuth.DefaultInstance;
-                Debug.Log("Firebase đã sẵn sàng!");
+                try
+                {
+                    const string DATABASE_URL = "https://mygametest2-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+                    database = FirebaseDatabase.GetInstance(DATABASE_URL);
+
+                    Debug.Log("Firebase đã sẵn sàng!");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError("LỖI KHỞI TẠO DATABASE: " + e.Message);
+                }
             }
             else
             {
@@ -69,15 +113,17 @@ public class FirebaseAuthManager : MonoBehaviour
             }
 
             user = task.Result.User;
+            InitializeUserInDatabase(user.UserId, user.Email);
             Debug.LogFormat("Đăng nhập thành công: {0} ({1})", user.DisplayName, user.Email);
             //statusText.text = "Đăng nhập thành công!";
             ShowNotification("Đăng nhập thành công!", Color.green);
             StartCoroutine(LoadAfterLogin());
         });
     }
+
     IEnumerator LoadAfterLogin()
     {
-        yield return new WaitForSeconds(1f); // đợi 1 giây cho người dùng đọc thông báo
+        yield return new WaitForSeconds(1f);
         SceneManager.LoadScene("LoadRoomScene");
     }
 
@@ -96,12 +142,16 @@ public class FirebaseAuthManager : MonoBehaviour
             }
 
             user = task.Result.User;
+            
+            InitializeUserInDatabase(user.UserId, user.Email);
+
             Debug.LogFormat("Tạo tài khoản thành công: {0}", user.Email);
             //statusText.text = "Đăng ký thành công!";
             ShowNotification("Đăng ký thành công!", Color.green);
-
+            StartCoroutine(LoadAfterLogin());
         });
     }
+
     void ShowNotification(string message, Color backgroundColor, float duration = 2f)
     {
         if (notificationPanel == null || notificationText == null) return;
