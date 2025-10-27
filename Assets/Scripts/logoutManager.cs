@@ -15,7 +15,6 @@ public class LogoutManager : MonoBehaviour
     {
         auth.SignOut();
         Debug.Log("Đã đăng xuất!");
-
         // Quay lại scene login
         SceneManager.LoadScene("LoginScene");
     }
