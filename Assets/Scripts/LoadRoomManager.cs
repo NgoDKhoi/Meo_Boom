@@ -21,6 +21,7 @@ public class LoadRoomManager : MonoBehaviour
     [SerializeField] public GameObject LeaderboardItem_Prefab;
     [SerializeField] private GameObject LeaderboardContent_Parent;
     [SerializeField] private GameObject Panel_MainUI;
+    [SerializeField] private GameObject Panel_NhapID;
     // [SerializeField] private GameObject Panel_NhapID; -> cho code
 
     void Start()
@@ -111,17 +112,17 @@ public class LoadRoomManager : MonoBehaviour
 
     public void OnCreateRoomClicked()
     {
-        Debug.Log("Tạo Phòng. (Cần logic chuyển Scene)");
-        /*
+        // Debug.Log("Tạo Phòng. (Cần logic chuyển Scene)");
+        
         SceneManager.LoadScene("RoomScene");
-        */
+        
     }
 
     public void OnJoinRoomClicked()
     {
-        Debug.Log("Tham Gia Phòng. (Cần logic bật Panel nhập mã phòng)");
+        Debug.Log("Tham Gia Phòng.");
 
-        /*
+        
         if (Panel_NhapID != null)
         {
             Panel_NhapID.SetActive(true);
@@ -132,7 +133,7 @@ public class LoadRoomManager : MonoBehaviour
         {
             Debug.LogError("LỖI CẤU HÌNH: Thiếu Panel_NhapID.");
         }
-        */
+        
     }
 
     public void OnVsBotClicked()

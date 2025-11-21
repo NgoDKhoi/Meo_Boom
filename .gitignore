@@ -97,3 +97,10 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+# --- CAC TEP TAM THOI VA SAO LUU TUY CHINH ---
+
+# Bỏ qua toàn bộ thư mục khôi phục của Unity
+Assets/_Recovery/
+
+# Bỏ qua toàn bộ thư mục sao lưu
+backup_unity_files/
