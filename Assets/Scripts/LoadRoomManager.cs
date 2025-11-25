@@ -21,6 +21,7 @@ public class LoadRoomManager : MonoBehaviour
     [SerializeField] public GameObject LeaderboardItem_Prefab;
     [SerializeField] private GameObject LeaderboardContent_Parent;
     [SerializeField] private GameObject Panel_MainUI;
+    [SerializeField] private GameObject Panel_NhapID;
     // [SerializeField] private GameObject Panel_NhapID; -> cho code
 
     void Start()
@@ -43,20 +44,22 @@ public class LoadRoomManager : MonoBehaviour
         }
     }
 
+    // Cập nhật để ưu tiên tải Username và Score
     private void LoadUserDataFromFirebase()
     {
         FirebaseUser user = FirebaseAuth.DefaultInstance.CurrentUser;
 
         if (user != null)
         {
-            Text_LoginName.text = user.Email;
+            string userId = user.UserId;
+            // Hiển thị email hoặc một tên tạm thời trước
+            Text_LoginName.text = "Đang tải tên...";
 
             UnityMainThreadDispatcher.Instance().Enqueue(() =>
             {
                 Text_Score.text = "Điểm: Đang tải...";
             });
 
-            string userId = user.UserId;
             Debug.Log("UID của tôi là: " + userId);
 
             DatabaseReference reference = FirebaseDatabase.GetInstance(DatabaseUrl).RootReference;
@@ -66,6 +69,7 @@ public class LoadRoomManager : MonoBehaviour
                 if (task.IsFaulted)
                 {
                     Debug.LogError($"LỖI ĐIỂM CÁ NHÂN: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
+                    Text_LoginName.text = user.Email; // Dùng email tạm thời nếu lỗi
                     Text_Score.text = "Điểm: LỖI KẾT NỐI";
                     return;
                 }
@@ -76,6 +80,10 @@ public class LoadRoomManager : MonoBehaviour
 
                     if (snapshot.Exists)
                     {
+                        // 1. Lấy Username
+                        string username = snapshot.Child("username").Exists ? snapshot.Child("username").Value.ToString() : user.Email;
+
+                        // 2. Lấy Score
                         object scoreObject = snapshot.Child("score").Value;
                         long score = 0;
 
@@ -83,10 +91,13 @@ public class LoadRoomManager : MonoBehaviour
                         else if (scoreObject is int i) score = i;
                         else if (scoreObject is double d) score = (long)d;
 
+                        // Cập nhật UI
+                        Text_LoginName.text = username;
                         Text_Score.text = "Điểm: " + score.ToString();
                     }
                     else
                     {
+                        Text_LoginName.text = user.Email;
                         Text_Score.text = "Điểm: 0 (Chưa có dữ liệu)";
                     }
                 }
@@ -101,17 +112,17 @@ public class LoadRoomManager : MonoBehaviour
 
     public void OnCreateRoomClicked()
     {
-        Debug.Log("Tạo Phòng. (Cần logic chuyển Scene)");
-        /*
+        // Debug.Log("Tạo Phòng. (Cần logic chuyển Scene)");
+        
         SceneManager.LoadScene("RoomScene");
-        */
+        
     }
 
     public void OnJoinRoomClicked()
     {
-        Debug.Log("Tham Gia Phòng. (Cần logic bật Panel nhập mã phòng)");
+        Debug.Log("Tham Gia Phòng.");
 
-        /*
+        
         if (Panel_NhapID != null)
         {
             Panel_NhapID.SetActive(true);
@@ -122,13 +133,13 @@ public class LoadRoomManager : MonoBehaviour
         {
             Debug.LogError("LỖI CẤU HÌNH: Thiếu Panel_NhapID.");
         }
-        */
+        
     }
 
     public void OnVsBotClicked()
     {
         Debug.Log("Chơi với Máy. (Cần logic chuyển Scene game)");
-        SceneManager.LoadScene("Gameplay"); 
+        SceneManager.LoadScene("Gameplay");
     }
 
     public void OnLeaderboardClicked()
@@ -165,6 +176,7 @@ public class LoadRoomManager : MonoBehaviour
 
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
+            // Xóa các item cũ
             for (int i = contentParent.childCount - 1; i >= 0; i--)
             {
                 GameObject child = contentParent.GetChild(i).gameObject;
@@ -197,8 +209,9 @@ public class LoadRoomManager : MonoBehaviour
 
         FirebaseUser currentUser = FirebaseAuth.DefaultInstance.CurrentUser;
         string currentUserId = currentUser?.UserId;
-        string currentUserEmail = currentUser?.Email;
+        string currentUserEmail = currentUser?.Email; // Giữ lại email để làm tên dự phòng
 
+        // Đã thay đổi: Lưu cả userId, username, và score
         reference.OrderByChild("score").LimitToLast(TopLimit).GetValueAsync().ContinueWith(task =>
         {
             if (task.IsFaulted)
@@ -210,12 +223,14 @@ public class LoadRoomManager : MonoBehaviour
             if (task.IsCompleted)
             {
                 DataSnapshot snapshot = task.Result;
-                var userScores = new System.Collections.Generic.List<(string userId, string email, long score)>();
+                var userScores = new System.Collections.Generic.List<(string userId, string username, long score)>();
 
                 foreach (var childSnapshot in snapshot.Children)
                 {
                     string userId = childSnapshot.Key;
-                    string email = childSnapshot.Child("email").Exists ? childSnapshot.Child("email").Value.ToString() : "N/A";
+
+                    // LẤY USERNAME (hoặc dùng email nếu username không tồn tại)
+                    string username = childSnapshot.Child("username").Exists ? childSnapshot.Child("username").Value.ToString() : (childSnapshot.Child("email").Exists ? childSnapshot.Child("email").Value.ToString() : "N/A");
 
                     object scoreObject = childSnapshot.Child("score").Value;
                     long score = 0;
@@ -223,7 +238,7 @@ public class LoadRoomManager : MonoBehaviour
                     else if (scoreObject is int i) score = i;
                     else if (scoreObject is double d) score = (long)d;
 
-                    userScores.Add((userId, email, score));
+                    userScores.Add((userId, username, score));
                 }
                 userScores.Reverse();
 
@@ -243,12 +258,12 @@ public class LoadRoomManager : MonoBehaviour
                         if (!isLeaderboardOpen) break;
                         int index = i;
 
-                        string emailToDisplay = userScores[index].email;
+                        string nameToDisplay = userScores[index].username;
 
                         if (userScores[index].userId == currentUserId)
                         {
                             // Thêm chuỗi đánh dấu vào tên người chơi
-                            emailToDisplay += " (HẠNG CỦA BẠN)";
+                            nameToDisplay += " (HẠNG CỦA BẠN)";
                         }
 
                         GameObject newEntry = Instantiate(LeaderboardItem_Prefab, contentParent);
@@ -256,30 +271,34 @@ public class LoadRoomManager : MonoBehaviour
 
                         LeaderboardItem itemScript = newEntry.GetComponent<LeaderboardItem>();
                         if (itemScript != null)
-                            itemScript.SetData(index + 1, emailToDisplay, (int)userScores[index].score);
+                            itemScript.SetData(index + 1, nameToDisplay, (int)userScores[index].score);
                     }
 
-                    LoadCurrentUserRank(currentUserId, currentUserEmail, userScores);
+                    // Truyền currentUserEmail để LoadCurrentUserRank có tên dự phòng
+                    LoadCurrentUserRank(currentUserId, currentUserEmail, userScores.Select(u => (u.userId, u.score)).ToList());
                 });
             }
         }, TaskScheduler.Default);
     }
 
-    private void LoadCurrentUserRank(string currentUserId, string currentUserEmail, System.Collections.Generic.List<(string userId, string email, long score)> topScores)
+    // Cập nhật tham số topScores
+    private void LoadCurrentUserRank(string currentUserId, string currentUserEmail, System.Collections.Generic.List<(string userId, long score)> topScores)
     {
-
         if (string.IsNullOrEmpty(currentUserId)) return;
         Transform contentParent = LeaderboardContent_Parent.transform;
         if (contentParent == null) return;
 
         DatabaseReference userReference = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference($"users/{currentUserId}");
 
-        userReference.Child("score").GetValueAsync().ContinueWith(task =>
+        userReference.GetValueAsync().ContinueWith(task => // Lấy toàn bộ data người dùng hiện tại
         {
             if (task.IsCompleted && !task.IsFaulted && task.Result.Exists)
             {
-                long currentScore = task.Result.Value is long l ? l : (task.Result.Value is int i ? (long)i : 0);
-                if (currentScore == 0 && (task.Result.Value is double d)) currentScore = (long)d;
+                DataSnapshot snapshot = task.Result;
+
+                // 1. Lấy Tên và Điểm
+                string currentUsername = snapshot.Child("username").Exists ? snapshot.Child("username").Value.ToString() : currentUserEmail;
+                long currentScore = snapshot.Child("score").Value is long l ? l : (snapshot.Child("score").Value is int i ? (long)i : (snapshot.Child("score").Value is double d ? (long)d : 0));
 
                 bool isInTopX = topScores.Any(item => item.userId == currentUserId);
                 if (isInTopX) return;
@@ -294,13 +313,14 @@ public class LoadRoomManager : MonoBehaviour
                         if (rankTask.IsCompleted && !rankTask.IsFaulted)
                         {
                             DataSnapshot rankSnapshot = rankTask.Result;
+                            // Số lượng người chơi có điểm lớn hơn hoặc bằng điểm của người chơi hiện tại
                             long myRank = rankSnapshot.ChildrenCount;
 
                             UnityMainThreadDispatcher.Instance().Enqueue(() =>
                             {
                                 if (contentParent == null || LeaderboardItem_Prefab == null) return;
 
-                                bool showSeparator = (int)myRank >= TopLimit + 2;
+                                bool showSeparator = (int)myRank > TopLimit;
 
                                 if (showSeparator)
                                 {
@@ -315,7 +335,7 @@ public class LoadRoomManager : MonoBehaviour
                                 rankEntry.SetActive(true);
                                 LeaderboardItem itemScript = rankEntry.GetComponent<LeaderboardItem>();
                                 if (itemScript != null)
-                                    itemScript.SetData((int)myRank, currentUserEmail + " (HẠNG CỦA BẠN)", (int)currentScore);
+                                    itemScript.SetData((int)myRank, currentUsername + " (HẠNG CỦA BẠN)", (int)currentScore);
                             });
                         }
                     }, TaskScheduler.Default);
