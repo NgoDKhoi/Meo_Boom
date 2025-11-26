@@ -93,7 +93,6 @@ public class DeckManager : MonoBehaviour
     }
 
     // --- Các hàm sự kiện ---
-
     void Warning()
     {
         Debug.Log("<color=red>BOOM! Bạn đã rút phải lá Mèo Nổ!</color>");
@@ -115,7 +114,7 @@ public class DeckManager : MonoBehaviour
         // Đảm bảo lá bài mới sinh ra nằm đúng tỉ lệ (đôi khi Unity bị lỗi scale khi Instantiate UI)
         newCard.transform.localScale = Vector3.one;
 
-        Debug.Log("<color=white>Đã thêm lá bài vào giao diện!</color>");
+        Debug.Log("<color=white>Đã thêm lá bài vào tay!</color>");
     }
 
     // Update is called once per frame
