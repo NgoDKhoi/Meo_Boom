@@ -1,27 +1,53 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 
 public class DeckManager : MonoBehaviour
 {
-    // Định nghĩa loại bài bằng Enum cho đơn giản hóa logic hiện tại
+    // --- Định nghĩa dữ liệu        ---
     public enum CardType
     {
         Defuse, // Lá gỡ bom
         Explode // Lá nổ (Exploding)
     }
 
+    public enum PlayerType 
+    { 
+        Human,
+        Bot
+    }
+
+    public class Player
+    {
+        public string name;
+        public PlayerType type;
+        public List<CardType> hand = new List<CardType>();
+        public bool isDead = false;
+        public int defuseCount = 1;
+
+        // UI hiển thị: Nếu là Human thì dùng area, nếu là Bot thì dùng script Display
+        public OpponentDisplay botDisplayUI;
+    }
+
+
+    // --- Khởi tạo game ---
+    public List<Player> players = new List<Player>(); // Chứa 4 người chơi
+    public int currentPlayerIndex = 0;
+
+    // --- Cấu hình UI & Prefab ---
+    public GameObject defuseCardPrefab; // Biến chứa Prefab lá defuse (Kéo từ Project vào đây)
+    public Transform playerHandArea; // Biến chứa khu vực tay người chơi (Kéo PlayerHandArea từ Hierarchy vào đây)
+    public Button btnDraw;
+    public TextMeshProUGUI txtTurnInfo; // Text thông báo lượt (Hoặc TextMeshProUGUI)
+
     // --- Cấu hình bộ bài ---
     public int explodeCardCount = 3; // 3 lá bom
     public int defuseCardCount = 32; // 32 lá gỡ bom
 
-    // 1. Biến chứa Prefab lá bài trắng (Kéo từ Project vào đây)
-    public GameObject defuseCardPrefab;
-
-    // 2. Biến chứa khu vực tay người chơi (Kéo PlayerHandArea từ Hierarchy vào đây)
-    public Transform playerHandArea;
-
+    
     // 3. List cho bộ bài
     private List<CardType> deck = new List<CardType>();
 
