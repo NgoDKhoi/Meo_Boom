@@ -469,7 +469,7 @@ GameObject:
   - component: {fileID: 355001380}
   - component: {fileID: 355001379}
   m_Layer: 0
-  m_Name: txt_Info
+  m_Name: TurnInfo_Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -622,7 +622,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa07f64792df12846bfa942ed87ce487, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  btnPlayCard: {fileID: 0}
+  deckManager: {fileID: 586141264}
+  defuseCardPrefab: {fileID: 4326468943758485538, guid: bf9b815fb5e6dc24cbc057fa039a858b, type: 3}
+  explodeCardPrefab: {fileID: 8055132225882542493, guid: 78c054108fa2b1140b80c1920acf1384, type: 3}
+  skipCardPrefab: {fileID: 2942013063981567608, guid: 5183d518988f53d40934b082f0ca7432, type: 3}
+  attackCardPrefab: {fileID: 2445417102526646924, guid: df013a5bfc65170478d0fb28d0363206, type: 3}
+  playerHandArea: {fileID: 978530191}
+  discardPileTransform: {fileID: 541315793}
+  drawButton: {fileID: 586141263}
+  playButton: {fileID: 2029041586}
+  turnInfoText: {fileID: 355001379}
+  players:
+  - name: Main Player
+    type: 0
+    hand: 
+    isDead: 0
+    botDisplayUI: {fileID: 0}
+  - name: Bot 1
+    type: 1
+    hand: 
+    isDead: 0
+    botDisplayUI: {fileID: 704343361}
+  - name: Bot 2
+    type: 1
+    hand: 
+    isDead: 0
+    botDisplayUI: {fileID: 1706459568}
+  - name: Bot 3
+    type: 1
+    hand: 
+    isDead: 0
+    botDisplayUI: {fileID: 534522105}
+  currentPlayerIndex: 0
 --- !u!4 &447230397
 Transform:
   m_ObjectHideFlags: 0
@@ -632,11 +663,11 @@ Transform:
   m_GameObject: {fileID: 447230395}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 162.98686, y: -8.637024, z: -9565.996}
-  m_LocalScale: {x: 106.28885, y: 106.28885, z: 106.28885}
+  m_LocalPosition: {x: 1.6037283, y: -0.0839548, z: -2.984726}
+  m_LocalScale: {x: 1.0331637, y: 1.0331637, z: 1.0331637}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1731450300}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &534522101
 GameObject:
@@ -740,7 +771,7 @@ GameObject:
   m_Component:
   - component: {fileID: 541315793}
   m_Layer: 0
-  m_Name: DiscardPile_Pos
+  m_Name: DiscardPileTransform
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -755,8 +786,8 @@ Transform:
   m_GameObject: {fileID: 541315792}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 207.60793, y: 25.434298, z: -9258.937}
-  m_LocalScale: {x: 102.87707, y: 102.87707, z: 102.87707}
+  m_LocalPosition: {x: 207, y: -53, z: -9258.937}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1731450300}
@@ -913,7 +944,7 @@ GameObject:
   - component: {fileID: 586141263}
   - component: {fileID: 586141264}
   m_Layer: 0
-  m_Name: Deck
+  m_Name: DrawPile_Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1020,9 +1051,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 586141264}
-        m_TargetAssemblyTypeName: DeckManager, Assembly-CSharp
-        m_MethodName: DrawCard
+      - m_Target: {fileID: 447230396}
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
+        m_MethodName: OnDrawButtonPress
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1044,40 +1075,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 432e224862b624e41b3d1af27bde4bb6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PackManager
-  players:
-  - name: Name player
-    type: 0
-    hand: 
-    isDead: 0
-    botDisplayUI: {fileID: 0}
-  - name: Bot 1
-    type: 1
-    hand: 
-    isDead: 0
-    botDisplayUI: {fileID: 704343361}
-  - name: Bot 2
-    type: 1
-    hand: 
-    isDead: 0
-    botDisplayUI: {fileID: 1706459568}
-  - name: Bot 3
-    type: 1
-    hand: 
-    isDead: 0
-    botDisplayUI: {fileID: 534522105}
-  currentPlayerIndex: 0
-  defuseCardPrefab: {fileID: 4326468943758485538, guid: bf9b815fb5e6dc24cbc057fa039a858b, type: 3}
-  explodeCardPrefab: {fileID: 8055132225882542493, guid: 78c054108fa2b1140b80c1920acf1384, type: 3}
-  skipCardPrefab: {fileID: 2942013063981567608, guid: 5183d518988f53d40934b082f0ca7432, type: 3}
-  attackCardPrefab: {fileID: 2445417102526646924, guid: df013a5bfc65170478d0fb28d0363206, type: 3}
-  playerHandArea: {fileID: 978530191}
-  btnDraw: {fileID: 586141263}
-  txtTurnInfo: {fileID: 355001379}
   explodeCardCount: 3
   defuseCardCount: 5
   attackCardCount: 20
   skipCardCount: 20
-  discardPileLocation: {fileID: 541315793}
 --- !u!1 &704343357
 GameObject:
   m_ObjectHideFlags: 0
@@ -2318,11 +2319,10 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 586141259}
   - {fileID: 355001378}
   - {fileID: 2029041585}
+  - {fileID: 586141259}
   - {fileID: 541315793}
-  - {fileID: 447230397}
   - {fileID: 35826079}
   - {fileID: 704343358}
   - {fileID: 1706459565}
@@ -2354,7 +2354,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8727042218526183616, guid: e627ccea590810b48851ac6efe9fa01e, type: 3}
+  m_Sprite: {fileID: 8275227733580792777, guid: 94b19710b9492ea41b7be3eefe17466f, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2660,7 +2660,7 @@ GameObject:
   - component: {fileID: 2029041587}
   - component: {fileID: 2029041586}
   m_Layer: 0
-  m_Name: button_PlayCard
+  m_Name: PlayCard_Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2732,7 +2732,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 447230396}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: PlaySelectedCard
+        m_MethodName: OnPlayCardButtonPress
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2786,4 +2786,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 1058456925}
   - {fileID: 1165865481}
+  - {fileID: 447230397}
   - {fileID: 248331321}
