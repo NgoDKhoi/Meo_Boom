@@ -3,10 +3,10 @@ using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI; // Cần thiết để thao tác với Layout
 
-public class Card_Controller : MonoBehaviour, IPointerDownHandler
+public class CardController : MonoBehaviour, IPointerDownHandler
 {
-    public DeckManager.CardType cardType;
-    public static Card_Controller selectedCard = null;
+    public DrawPileManager.CardType cardType;
+    public static CardController selectedCard = null;
 
     private SpriteRenderer spriteRenderer;
     private CanvasGroup canvasGroup; // Dùng cái này để chặn raycast khi đang bay
