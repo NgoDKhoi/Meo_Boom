@@ -9,7 +9,7 @@ public class GameStarterManager : MonoBehaviour
 {
     public Button startButton;
     private const string GAMEPLAY_SCENE = "GameScene"; // Tên Scene game của bạn
-    private const int MIN_PLAYERS = 2; // Số người chơi tối thiểu để bắt đầu
+    private const int MIN_PLAYERS = 1; // Số người chơi tối thiểu để bắt đầu
 
     // Tham chiếu Firebase
     private DatabaseReference dbRef;
