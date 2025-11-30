@@ -4,6 +4,7 @@ using Firebase.Database;
 using Firebase.Extensions;
 using System.Collections.Generic;
 using TMPro;
+using System.Linq;
 
 public class RoomSceneDisplay : MonoBehaviour
 {
@@ -42,8 +43,9 @@ public class RoomSceneDisplay : MonoBehaviour
         // Lấy tham chiếu đến node /rooms/{roomID}/players
         if (FirebaseManager.Instance != null && FirebaseManager.Instance.Database != null)
         {
+            // Lấy tham chiếu đến node /rooms/{roomID}/players
             roomDbRef = FirebaseManager.Instance.Database.RootReference
-                       .Child("rooms").Child(roomID).Child("players");
+                        .Child("rooms").Child(roomID).Child("players");
 
             // 2. Bắt đầu lắng nghe thay đổi danh sách người chơi
             roomDbRef.ValueChanged += HandlePlayersValueChanged;
@@ -89,10 +91,12 @@ public class RoomSceneDisplay : MonoBehaviour
             else if (args.Snapshot.Value is Dictionary<string, object> playerDict)
             {
                 // Nếu Firebase lưu array dưới dạng Map { "0": "User1", "1": "User2" }
-                foreach (var entry in playerDict)
-                {
-                    if (entry.Value != null) players.Add(entry.Value.ToString());
-                }
+                // Cần sắp xếp theo key số (0, 1, 2...) để đảm bảo thứ tự
+                var sortedPlayers = playerDict
+                    .OrderBy(kvp => int.Parse(kvp.Key))
+                    .Select(kvp => kvp.Value.ToString());
+
+                players.AddRange(sortedPlayers);
             }
 
             RoomManager.Instance.currentRoomPlayers = players;
@@ -103,7 +107,16 @@ public class RoomSceneDisplay : MonoBehaviour
     /// Cập nhật UI hiển thị danh sách người chơi.
     public void UpdatePlayerList(List<string> players)
     {
-        // ❌ KIỂM TRA LỖI BẠN GẶP (Dòng 104)
+        // Thêm kiểm tra RoomManager.Instance
+        if (RoomManager.Instance == null)
+        {
+            Debug.LogError("❌ Lỗi: RoomManager không sẵn sàng.");
+            return;
+        }
+
+        // Lấy Host (người đầu tiên trong danh sách)
+        string roomHost = players.Count > 0 ? players[0] : null;
+
         if (playerListContainer == null)
         {
             Debug.LogError("❌ Lỗi: playerListContainer không được gán hoặc đã bị hủy.");
@@ -134,19 +147,16 @@ public class RoomSceneDisplay : MonoBehaviour
 
                 if (nameText != null)
                 {
-                    // Thêm logic để hiển thị Host (nếu cần)
-                    if (playerName == RoomManager.Instance.currentUsername)
+                    string displayText = playerName;
+
+                    //  Kiểm tra người đang được vẽ có phải là Host thực sự (players[0]) hay không.
+                    if (playerName == roomHost)
                     {
-                        nameText.text = playerName + " (HOST)";
+                        displayText = playerName + " (HOST)";
                     }
-                    else if (playerName == RoomManager.Instance.currentRoomPlayers[0])
-                    {
-                        nameText.text = playerName + " (Host)";
-                    }
-                    else
-                    {
-                        nameText.text = playerName;
-                    }
+                    // Các Client khác (không phải Host) chỉ hiển thị tên bình thường (playerName)
+
+                    nameText.text = displayText;
                 }
             }
         }
