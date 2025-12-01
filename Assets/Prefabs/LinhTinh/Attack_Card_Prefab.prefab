@@ -37,7 +37,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 211, y: -46}
-  m_SizeDelta: {x: 236, y: 336}
+  m_SizeDelta: {x: 236, y: 310}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8591069071849713612
 CanvasRenderer:
@@ -136,8 +136,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Card_Controller
   cardType: 3
-  zoomMultiplier: 2
-  moveSpeed: 8
+  zoomMultiplier: 2.5
+  moveSpeed: 4
   sortingOrderWhenSelected: 100
   sortingOrderWhenPlayed: 10
-  playPosition: {x: 3.05, y: -0.13, z: 0}

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2942013063981567608
+--- !u!1 &551720893867478409
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,24 +8,24 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 926191094316205317}
-  - component: {fileID: 3138646565446492331}
-  - component: {fileID: 6276409349762027463}
-  - component: {fileID: 3094896159492683703}
+  - component: {fileID: 5195841848729967528}
+  - component: {fileID: 3575365026469110195}
+  - component: {fileID: 8878596446101745016}
+  - component: {fileID: 9166140449046796207}
   m_Layer: 0
-  m_Name: Skip_Card_Prefab
+  m_Name: Card_Back_Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!224 &926191094316205317
+--- !u!224 &5195841848729967528
 RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2942013063981567608}
+  m_GameObject: {fileID: 551720893867478409}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -35,24 +35,24 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 47, y: -311}
-  m_SizeDelta: {x: 236, y: 310}
+  m_AnchoredPosition: {x: 147, y: -44}
+  m_SizeDelta: {x: 200, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &3138646565446492331
+--- !u!222 &3575365026469110195
 CanvasRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2942013063981567608}
+  m_GameObject: {fileID: 551720893867478409}
   m_CullTransparentMesh: 1
---- !u!114 &6276409349762027463
+--- !u!114 &8878596446101745016
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2942013063981567608}
+  m_GameObject: {fileID: 551720893867478409}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
@@ -66,7 +66,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4358472242703741127, guid: 538537c3ee51d67439fb2887713fe2bf, type: 3}
+  m_Sprite: {fileID: 5338460708296581105, guid: 014c46f8bcd6ff44d9bb993b0a1cc4a9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -76,20 +76,23 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &3094896159492683703
+--- !u!114 &9166140449046796207
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2942013063981567608}
+  m_GameObject: {fileID: 551720893867478409}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc954c2dce0d9d54abd7f55b944bf67e, type: 3}
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Card_Controller
-  cardType: 2
-  zoomMultiplier: 2.5
-  moveSpeed: 4
-  sortingOrderWhenSelected: 100
-  sortingOrderWhenPlayed: 10
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: -1
+  m_PreferredHeight: -1
+  m_FlexibleWidth: 1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1

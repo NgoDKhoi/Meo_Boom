@@ -4,23 +4,23 @@ using TMPro;
 
 public class OpponentDisplay : MonoBehaviour
 {
-    public TextMeshProUGUI userNameText;      // Kéo UI txt_UserName vào đây
-    public TextMeshProUGUI cardCountText; // Kéo UI txt_CardCount vào đây
+    public TextMeshProUGUI userNameText;
 
-    // Hàm này sẽ được PackManager gọi khi số bài thay đổi
+    public Transform handArea;
+
+
     public void UpdateDisplay(string name, int count, bool isDead)
     {
         userNameText.text = name;
 
         if (isDead)
         {
-            cardCountText.text = "ĐÃ NỔ";
-            cardCountText.color = Color.red;
+            userNameText.text = $"{name} (ĐÃ NỔ)";
+            userNameText.color = Color.red;
         }
         else
         {
-            cardCountText.text = $"Đang có {count} lá";
-            cardCountText.color = Color.white;
+            userNameText.color = Color.white;
         }
     }
 }
