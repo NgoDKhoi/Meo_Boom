@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.EventSystems;
-using UnityEngine.UI; // Cần thiết để thao tác với Layout
+using UnityEngine.UI;
 
 public class CardController : MonoBehaviour, IPointerDownHandler
 {
@@ -9,13 +9,16 @@ public class CardController : MonoBehaviour, IPointerDownHandler
     public static CardController selectedCard = null;
 
     private SpriteRenderer spriteRenderer;
-    private CanvasGroup canvasGroup; // Dùng cái này để chặn raycast khi đang bay
+    private CanvasGroup canvasGroup;
     private int originalSortingOrder;
 
-    // Lưu trạng thái ngay trước khi zoom
-    private Vector3 originalPosition;
-    private Vector3 originalScale;
-    private int originalSiblingIndex; // Quan trọng để trả về đúng khe trong Hand
+    public static Transform canvasTransform;
+
+    // LƯU TRẠNG THÁI NGAY TRƯỚC KHI ZOOM
+    private Vector3 originalWorldPosition; // Vị trí cũ (World Space)
+    private Vector3 actualLocalScaleInHand; // Kích thước cũ (Local Scale)
+    private int originalSiblingIndex;
+    private Transform originalParent;
 
     private bool isZoomed = false;
     private Vector3 screenCenterWorldPos;
@@ -24,35 +27,32 @@ public class CardController : MonoBehaviour, IPointerDownHandler
     private const float DOUBLE_CLICK_TIME = 0.3f;
 
     [Header("Thiet lap")]
-    public float zoomMultiplier = 1.8f; // Giảm xuống chút cho vừa màn hình
-    public float moveSpeed = 10f;       // Tăng tốc độ cho mượt
+    public float zoomMultiplier = 8.0f;
+    public float moveSpeed = 4f;
     public int sortingOrderWhenSelected = 100;
     public int sortingOrderWhenPlayed = 10;
-    public Vector3 playPosition = new Vector3(3.05f, -0.13f, 0f);
 
     void Start()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null) originalSortingOrder = spriteRenderer.sortingOrder;
 
-        originalScale = transform.localScale;
-
-        // Tính tâm màn hình
         Vector3 screenCenter = new Vector3(Screen.width / 2, Screen.height / 2, Camera.main.nearClipPlane + 10);
         screenCenterWorldPos = Camera.main.ScreenToWorldPoint(screenCenter);
         screenCenterWorldPos.z = 0;
     }
 
-    // Hỗ trợ cả Click vào Collider (Sprite) và Click vào UI
     void OnMouseDown() => HandleClickInput();
     public void OnPointerDown(PointerEventData eventData) => HandleClickInput();
 
     void HandleClickInput()
     {
+        if (GameManager.Instance != null && GameManager.Instance.players[GameManager.Instance.currentPlayerIndex].type != GameManager.PlayerType.Human)
+            return;
+
         if (isZoomed)
         {
             Deselect();
-            selectedCard = null;
         }
         else
         {
@@ -71,84 +71,135 @@ public class CardController : MonoBehaviour, IPointerDownHandler
         isZoomed = true;
         selectedCard = this;
 
-        // 1. QUAN TRỌNG: Lưu vị trí HIỆN TẠI (chứ không phải vị trí hồi Start)
-        originalPosition = transform.position;
-        originalSiblingIndex = transform.GetSiblingIndex(); // Lưu thứ tự trong Layout Group
+        // LƯU KÍCH THƯỚC THỰC TẾ TRONG TAY
+        actualLocalScaleInHand = transform.localScale;
 
-        // 2. Tạm thời tắt Layout Element (nếu có) để lá bài không bị Layout Group giật lại
+        // 1. LƯU: Vị trí, thứ tự và đối tượng cha ban đầu
+        originalWorldPosition = transform.position; // <--- VỊ TRÍ NÀY QUAN TRỌNG ĐỂ THU VỀ MƯỢT MÀ
+        originalSiblingIndex = transform.GetSiblingIndex();
+        originalParent = transform.parent;
+
+        // 2. Tắt Layout Element
         LayoutElement le = GetComponent<LayoutElement>();
         if (le != null) le.ignoreLayout = true;
 
-        // 3. Đưa lên lớp trên cùng để không bị che
+        // 3. FIX Z-ORDER: Chuyển lên Panel_GamePlay
+        if (CardController.canvasTransform != null)
+        {
+            transform.SetParent(CardController.canvasTransform, true);
+            transform.SetAsLastSibling();
+        }
+
         if (spriteRenderer != null) spriteRenderer.sortingOrder = sortingOrderWhenSelected;
-        transform.SetAsLastSibling(); // Đưa xuống cuối danh sách con để vẽ lên trên cùng trong UI
 
         StopAllCoroutines();
-        StartCoroutine(MoveAndScale(screenCenterWorldPos, originalScale * zoomMultiplier));
+        // Gọi hàm di chuyển trong World Space.
+        StartCoroutine(MoveAndScaleWorldSpace(screenCenterWorldPos, actualLocalScaleInHand * zoomMultiplier));
     }
 
     public void Deselect()
     {
         isZoomed = false;
-
-        // Trả về Order cũ cho Sprite
-        if (spriteRenderer != null) spriteRenderer.sortingOrder = originalSortingOrder;
+        CardController.selectedCard = null;
 
         StopAllCoroutines();
-        // Bay về vị trí cũ, sau khi bay xong thì trả lại vào Layout
-        StartCoroutine(MoveBackToHand());
+        // BẮT ĐẦU COROUTINE TRẢ VỀ VỚI ANIMATION
+        StartCoroutine(MoveBackToHandWorldSpace());
     }
 
-    IEnumerator MoveBackToHand()
-    {
-        Vector3 startPos = transform.position;
-        Vector3 startScale = transform.localScale;
+    // ===================================================
+    // CÁC COROUTINE
+    // ===================================================
 
-        // Bay về
+    // COROUTINE MỚI: Di chuyển lá bài từ giữa màn hình về vị trí ban đầu (World Space)
+    IEnumerator MoveBackToHandWorldSpace()
+    {
+        // 1. Dùng Coroutine di chuyển/scale World Space có sẵn
+        // Target: Vị trí World Space ban đầu (originalWorldPosition)
+        // Scale Target: Kích thước Local Scale ban đầu (actualLocalScaleInHand)
+        yield return StartCoroutine(
+            MoveAndScaleWorldSpace(originalWorldPosition, actualLocalScaleInHand)
+        );
+
+        // 2. SAU KHI DI CHUYỂN XONG, GỌI LOGIC GẮN LẠI VÀO LAYOUT GROUP
+        ReturnCardToHand();
+    }
+
+    // COROUTINE CŨ: Logic gắn lại vào Layout Group (KHÔNG CÒN LÀ IEnumerator NỮA)
+    void ReturnCardToHand()
+    {
+        LayoutElement le = GetComponent<LayoutElement>();
+
+        if (le != null) le.ignoreLayout = true;
+
+        // 1. Gắn lá bài trở lại đối tượng cha ban đầu (Hand Area)
+        transform.SetParent(originalParent, true);
+
+        // 2. Đặt lá bài vào đúng vị trí Sibling Index ban đầu
+        transform.SetSiblingIndex(originalSiblingIndex);
+
+        // 3. KHÔI PHỤC KÍCH THƯỚC THỰC TẾ (Đã được set trong MoveBackToHandWorldSpace, chỉ đặt lại để đảm bảo)
+        transform.localScale = actualLocalScaleInHand;
+
+        // 4. BẬT LẠI Layout Element. Layout Group sẽ tính toán lại VỊ TRÍ LOCAL
+        if (le != null) le.ignoreLayout = false;
+    }
+
+
+    IEnumerator MoveAndScaleWorldSpace(Vector3 targetWorldPos, Vector3 targetWorldScale)
+    {
+        Vector3 startWorldPos = transform.position;
+        Vector3 startWorldScale = transform.localScale;
         float t = 0f;
         while (t < 1f)
         {
             t += Time.deltaTime * moveSpeed;
-            transform.position = Vector3.Lerp(startPos, originalPosition, t);
-            transform.localScale = Vector3.Lerp(startScale, originalScale, t);
+            transform.position = Vector3.Lerp(startWorldPos, targetWorldPos, t);
+            transform.localScale = Vector3.Lerp(startWorldScale, targetWorldScale, t);
             yield return null;
         }
-
-        // Đảm bảo thông số chuẩn xác
-        transform.position = originalPosition;
-        transform.localScale = originalScale;
-
-        // 4. QUAN TRỌNG: Trả lại vào Layout Group
-        transform.SetSiblingIndex(originalSiblingIndex); // Nhét lại vào đúng khe cũ
-
-        LayoutElement le = GetComponent<LayoutElement>();
-        if (le != null) le.ignoreLayout = false; // Bật lại Layout để tự căn chỉnh các lần sau
+        transform.position = targetWorldPos;
+        transform.localScale = targetWorldScale;
     }
 
-    IEnumerator MoveAndScale(Vector3 targetPos, Vector3 targetScale)
+    public void PlayCard(Transform discardPileTarget)
+    {
+        isZoomed = false;
+        CardController.selectedCard = null;
+
+        LayoutElement le = GetComponent<LayoutElement>();
+        if (le != null) le.ignoreLayout = true;
+
+        if (spriteRenderer != null) spriteRenderer.sortingOrder = sortingOrderWhenPlayed;
+
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+
+        StopAllCoroutines();
+        StartCoroutine(MoveToDiscardPile(discardPileTarget.position, GameManager.Instance.discardPileCardScale));
+    }
+
+    IEnumerator MoveToDiscardPile(Vector3 targetPos, Vector3 targetScale)
     {
         Vector3 startPos = transform.position;
         Vector3 startScale = transform.localScale;
-        float t = 0f;
-        while (t < 1f)
+
+        float duration = 0.3f;
+        float elapsedTime = 0f;
+        while (elapsedTime < duration)
         {
-            t += Time.deltaTime * moveSpeed;
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / duration;
+
             transform.position = Vector3.Lerp(startPos, targetPos, t);
             transform.localScale = Vector3.Lerp(startScale, targetScale, t);
             yield return null;
         }
+
         transform.position = targetPos;
         transform.localScale = targetScale;
-    }
 
-    public void PlayCard()
-    {
-        if (spriteRenderer != null) spriteRenderer.sortingOrder = sortingOrderWhenPlayed;
-        transform.SetParent(null, true);
-        StopAllCoroutines();
-        StartCoroutine(MoveAndScale(playPosition, originalScale));
-
-        Collider2D col = GetComponent<Collider2D>();
-        if (col != null) col.enabled = false;
+        transform.SetParent(GameManager.Instance.discardPileTransform, true);
+        transform.SetAsLastSibling();
     }
-}   
+}
