@@ -34,8 +34,8 @@ public class GameManager : MonoBehaviour
     public GameObject skipCardPrefab;
     public GameObject attackCardPrefab;
     public GameObject shuffleCardPrefab;
-    public GameObject drawButomPrefab;
-    public GameObject seeFutureObject;
+    public GameObject drawBottomPrefab;
+    public GameObject seeFuturePrefab;
     public GameObject cardBackPrefab;
 
     public Transform playerHandArea;       // Khu vực tay người
@@ -100,15 +100,8 @@ public class GameManager : MonoBehaviour
         // 2. Bảo DrawPileManager tạo bộ bài AN TOÀN (chưa có bom)
         drawPileManager.PrepareSafeDeck(players.Count);
 
-        // 3. GameManager thực hiện chia bài khởi đầu
+        // 3. BẮT ĐẦU COROUTINE CHIA BÀI (Hàm này sẽ nhét bom và gọi StartTurn() sau khi xong)
         StartCoroutine(DealInitialCardsRoutine());
-
-        // 4. Bảo DrawPileManager nhét BOM vào và xào lại
-        drawPileManager.AddExplodingKittens();
-
-        // 5. BẮT ĐẦU COROUTINE CHIA BÀI (Hàm này sẽ gọi StartTurn() sau khi xong)
-        StartTurn();
-        
     }
 
     // Chia bài khởi đầu
@@ -139,7 +132,15 @@ public class GameManager : MonoBehaviour
 
             yield return new WaitForSeconds(0.35f);
         }
-        Debug.Log("GameManager: Đã chia xong (1 Defuse + 4 Random) cho mọi người!");
+
+        // Thêm bom vào
+        drawPileManager.AddExplodingKittens();
+
+        // Có thể thêm hiệu ứng trộn bom ở đây (tiếng xào bài chẳng hạn)
+        // yield return new WaitForSeconds(1f);
+
+        Debug.Log("GameManager: Gọi StartTurn()");
+        StartTurn();
     }
 
     // --- TURN LOGIC ---
@@ -215,7 +216,7 @@ public class GameManager : MonoBehaviour
         return DrawPileManager.CardType.None; // Tạm quy ước Skip ở hàm này là "Bỏ qua việc đánh"
     }
 
-    // Hành động đánh bài của bot
+    // Hành động đánh bài của bot   
     IEnumerator BotPlayCardAction(Player bot, DrawPileManager.CardType cardType)
     {
         // 1. Xóa bài khỏi tay Bot (xóa trong data)
@@ -410,6 +411,10 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.Explode: return explodeCardPrefab;
             case DrawPileManager.CardType.Skip: return skipCardPrefab;
             case DrawPileManager.CardType.Attack: return attackCardPrefab;
+            case DrawPileManager.CardType.Shuffle: return shuffleCardPrefab;
+            case DrawPileManager.CardType.DrawBottom: return drawBottomPrefab;
+            case DrawPileManager.CardType.SeeFuture: return seeFuturePrefab;
+            
             default: return null;
         }
     }
