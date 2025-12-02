@@ -47,9 +47,22 @@ public class CardController : MonoBehaviour, IPointerDownHandler
 
     void HandleClickInput()
     {
+        // Chỉ Human mới được chơi
         if (GameManager.Instance != null && GameManager.Instance.players[GameManager.Instance.currentPlayerIndex].type != GameManager.PlayerType.Human)
             return;
 
+        // Chỉ được đánh lá defuse
+        if (GameManager.Instance.IsDefusing)
+        {
+            if (this.cardType != DrawPileManager.CardType.Defuse)
+            {
+                Debug.Log("Đang dính bom! Phải chọn thẻ Defuse!");
+                // Có thể thêm hiệu ứng lắc lá bài để báo lỗi ở dưới
+                return;
+            }
+        }
+
+        // Nếu lá đang được phóng to, thì click để thu nhỏ
         if (isZoomed)
         {
             Deselect();

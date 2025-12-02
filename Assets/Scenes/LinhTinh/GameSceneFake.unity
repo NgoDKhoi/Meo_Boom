@@ -665,11 +665,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa07f64792df12846bfa942ed87ce487, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  deckManager: {fileID: 586141264}
+  drawPileManager: {fileID: 1529766207}
   defuseCardPrefab: {fileID: 4326468943758485538, guid: bf9b815fb5e6dc24cbc057fa039a858b, type: 3}
   explodeCardPrefab: {fileID: 8055132225882542493, guid: 78c054108fa2b1140b80c1920acf1384, type: 3}
   skipCardPrefab: {fileID: 2942013063981567608, guid: 5183d518988f53d40934b082f0ca7432, type: 3}
   attackCardPrefab: {fileID: 2445417102526646924, guid: df013a5bfc65170478d0fb28d0363206, type: 3}
+  shuffleCardPrefab: {fileID: 2445417102526646924, guid: 602553215aeaf2f4585817a22d670732, type: 3}
+  drawButomPrefab: {fileID: 2445417102526646924, guid: 4836045f43f95b24c99a08d9c9e34605, type: 3}
+  seeFutureObject: {fileID: 2445417102526646924, guid: 234b7fcd7fb49c44b9996f195f1f1857, type: 3}
   cardBackPrefab: {fileID: 551720893867478409, guid: b779dee722d365c49a352ea51c2a8910, type: 3}
   playerHandArea: {fileID: 978530191}
   discardPileTransform: {fileID: 541315793}
@@ -751,7 +754,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -805.2399, y: 291.06}
+  m_AnchoredPosition: {x: -805.24005, y: 291.06}
   m_SizeDelta: {x: -1610.48, y: -582.12}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &534522103
@@ -1107,7 +1110,7 @@ MonoBehaviour:
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
-        m_CallState: 2
+        m_CallState: 1
 --- !u!114 &586141264
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1122,8 +1125,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PackManager
   explodeCardCount: 3
   defuseCardCount: 5
-  attackCardCount: 20
-  skipCardCount: 20
+  skipCardCount: 10
+  attackCardCount: 10
+  shuffleCardCount: 10
+  drawBottomCardCount: 5
+  seeFutureCardCount: 5
 --- !u!1 &704343357
 GameObject:
   m_ObjectHideFlags: 0
@@ -2094,6 +2100,57 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 1
+--- !u!1 &1529766206
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1529766208}
+  - component: {fileID: 1529766207}
+  m_Layer: 0
+  m_Name: DrawPileManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1529766207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1529766206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 432e224862b624e41b3d1af27bde4bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawPileManager
+  explodeCardCount: 0
+  defuseCardCount: 0
+  skipCardCount: 0
+  attackCardCount: 0
+  shuffleCardCount: 0
+  drawBottomCardCount: 0
+  seeFutureCardCount: 0
+--- !u!4 &1529766208
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1529766206}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.60373, y: -0.08395, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1706459564
 GameObject:
   m_ObjectHideFlags: 0
@@ -2216,9 +2273,9 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 586141259}
   - {fileID: 355001378}
   - {fileID: 2029041585}
+  - {fileID: 586141259}
   - {fileID: 541315793}
   - {fileID: 35826079}
   - {fileID: 704343358}
@@ -2548,4 +2605,5 @@ SceneRoots:
   - {fileID: 1058456925}
   - {fileID: 1165865481}
   - {fileID: 447230397}
+  - {fileID: 1529766208}
   - {fileID: 248331321}
