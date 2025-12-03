@@ -467,11 +467,12 @@ public class GameManager : MonoBehaviour
     // Thuật toán chọn bài cho bot
     DrawPileManager.CardType BotDecideBestCard(Player bot)
     {
-        // Ưu tiên 1: Nếu có Attack -> Đánh luôn cho ngầu
-        //if (bot.hand.Contains(DrawPileManager.CardType.Attack))
-        //{
-        //    return DrawPileManager.CardType.Attack;
-        //}
+        // Ưu tiên 1:
+        // Nếu đang bị dính Attack (phải rút nhiều hơn 1 lá) -> Ưu tiên tìm Attack để phản đòn
+        if (turnsRemaining > 1)
+        {
+            if (bot.hand.Contains(DrawPileManager.CardType.Attack)) return DrawPileManager.CardType.Attack;
+        }
 
         // Ưu tiên 2: Nếu có SeeFuture -> Đánh để soi
         // if (bot.hand.Contains(...SeeFuture...)) return ...
