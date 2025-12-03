@@ -63,7 +63,6 @@ public class DrawPileManager : MonoBehaviour
     {      
         int index = Mathf.Clamp(indexFromTop, 0, drawPile.Count); // Kiểm tra index hợp lệ để tránh lỗi
         drawPile.Insert(index, card);
-        Debug.Log($"DrawPileManager: Đã nhét {card} vào vị trí {index}");
     }
 
     // Hàm xào bộ bài
@@ -85,6 +84,7 @@ public class DrawPileManager : MonoBehaviour
 
         CardType c = drawPile[0];
         drawPile.RemoveAt(0);
+        Debug.Log($"Bộ bài còn <color=red>{GetRemainingCount()} lá </color>");
         return c;
     }
 
