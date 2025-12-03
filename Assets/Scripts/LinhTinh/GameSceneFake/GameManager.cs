@@ -73,48 +73,18 @@ public class GameManager : MonoBehaviour
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
-    void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            // Trường hợp có 2 GameManager (không nên xảy ra)
-            Destroy(gameObject);
-        }
-    }
-
-    void Start()
-    {
-        if (turnInfoText != null)
-        {
-            CardController.canvasTransform = turnInfoText.transform.parent;
-        }
-
-        StartGameSequence();
-    }
-
-    void Update()
-    {
-        // Update trạng thái nút Đánh bài
-        if (playButton != null)
-        {
-            playButton.interactable = (CardController.selectedCard != null);
-        }
-    }
-
+    #region CORE GAMEPLAY
+    // Bắt đầu game
     void StartGameSequence()
     {
         // 1. Reset biến toàn cục
-        currentPlayerIndex = 0; 
-        IsDefusing = false;    
+        currentPlayerIndex = 0;
+        IsDefusing = false;
         CardController.selectedCard = null;
 
         // Xóa visual bom nếu còn sót lại từ ván trước
         if (pendingBombVisual != null) Destroy(pendingBombVisual);
-            
+
         // 2. Reset trạng thái người chơi
         foreach (var p in players)
         {
@@ -170,32 +140,7 @@ public class GameManager : MonoBehaviour
         StartTurn();
     }
 
-    // --- TURN LOGIC ---
-    void StartTurn()
-    {
-        Player currentP = players[currentPlayerIndex];
-        if (currentP.isDead) { EndTurn(); return; }
-
-        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}";
-
-        if (currentP.type == PlayerType.Human)
-        {
-            if (drawButton != null) drawButton.interactable = true;
-        }
-        else
-        {
-            if (drawButton != null) drawButton.interactable = false;
-            StartCoroutine(BotPlayRoutine());
-        }
-    }
-
-    public void EndTurn()
-    {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.Count; // Giống bounded buffer
-        StartTurn();
-    }
-
-    // Hành động rút bài
+    // Rút bài
     IEnumerator DrawCardRoutine()
     {
         {
@@ -284,147 +229,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-
-    // --- Các hàm hỗ trợ ---
-
-    // Quản lý lượt chơi của Bot
-    IEnumerator BotPlayRoutine()
-    {
-        // Bot sẽ chờ để 1 khoảng time ngẫu nhiên để "suy nghĩ"
-        yield return new WaitForSeconds(Random.Range(1.5f, 3f));
-
-        Player botPlayer = players[currentPlayerIndex];
-
-        // Bot kiểm tra bài trên tay để xem nên làm gì ?
-        DrawPileManager.CardType cardToPlay = BotDecideBestCard(botPlayer);
-
-        if (cardToPlay != DrawPileManager.CardType.None) // Nếu không rút bài
-        {
-            Debug.Log($"{botPlayer.name} quyết định đánh lá: {cardToPlay}");
-
-            // Gọi hàm xử lý đánh bài cho Bot (bạn cần tách hàm PlayCard logic ra khỏi nút bấm Human)
-            yield return StartCoroutine(BotPlayCardAction(botPlayer, cardToPlay));
-
-            // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
-        }
-         // === TRƯỜNG HỢP 2: KHÔNG CÓ BÀI NGON -> RÚT BÀI ===
-        Debug.Log($"{botPlayer.name} quyết định RÚT BÀI");
-        StartCoroutine(DrawCardRoutine());
-    }
-
-    // Thuật toán chọn bài cho bot
-    DrawPileManager.CardType BotDecideBestCard(Player bot)
-    {
-        // Ưu tiên 1: Nếu có Attack -> Đánh luôn cho ngầu
-        //if (bot.hand.Contains(DrawPileManager.CardType.Attack))
-        //{
-        //    return DrawPileManager.CardType.Attack;
-        //}
-
-        // Ưu tiên 2: Nếu có SeeFuture -> Đánh để soi
-        // if (bot.hand.Contains(...SeeFuture...)) return ...
-
-        // Ưu tiên 3: Đánh lá skip
-        if (bot.hand.Contains(DrawPileManager.CardType.Skip))
-        {
-            return DrawPileManager.CardType.Skip;
-        }
-
-        // Mặc định: Không đánh gì cả (để đi Rút bài)
-        return DrawPileManager.CardType.None; // Tạm quy ước Skip ở hàm này là "Bỏ qua việc đánh"
-    }
-
-    // Hành động đánh bài của bot   
-    IEnumerator BotPlayCardAction(Player bot, DrawPileManager.CardType cardType)
-    {
-        // 1. Xóa bài khỏi tay Bot (xóa trong data)
-        bot.hand.Remove(cardType);
-        drawPileManager.AddToDiscardPile(cardType);
-
-        // 2. Cập nhật UI (Xóa bớt 1 lưng bài)
-        UpdateUIForBot(bot);
-
-        // 3. Spawn Visual lá bài bay ra giữa bàn (cho người chơi thấy Bot vừa đánh gì)
-        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);
-
-        // ... Code Animation bay vào DiscardPile ...
-        yield return new WaitForSeconds(1f); 
-        cardVisual.transform.SetParent(discardPileTransform);
-        cardVisual.transform.localPosition = Vector3.zero;
-        cardVisual.transform.localRotation = Quaternion.identity;
-        cardVisual.transform.localScale = Vector3.one;
-
-        // 4. Xử lý hiệu ứng bài (Attack, Skip...)
-        // HandleCardEffect(cardType);
-    }
-
-    // Hàm sự kiện của nút đánh bài
-    public void OnPlayCardButtonPress()
-    {
-        if (CardController.selectedCard == null) return;
-
-        CardController cardObj = CardController.selectedCard;
-        Player currentP = players[currentPlayerIndex];
-            
-
-        // A. NẾU ĐANG TRÚNG BOOM
-        if (IsDefusing)
-        {
-            // Chỉ chấp nhận thẻ Defuse
-            if (cardObj.cardType == DrawPileManager.CardType.Defuse)
-            {
-                // 1. Xóa bài khỏi tay & bay vào Discard Pile
-                ProcessCardData(currentP, cardObj.cardType);
-                cardObj.PlayCard(discardPileTransform);
-
-                // 2. Tắt chế độ nguy hiểm
-                IsDefusing = false;
-
-                // 3. Xử lý Quả Bom đang treo (pendingBombVisual)
-
-                Destroy(pendingBombVisual); // Xóa visual bom cũ
-
-                int randomSlot = Random.Range(0, drawPileManager.GetRemainingCount());
-                drawPileManager.InsertCardToDeck(DrawPileManager.CardType.Explode, randomSlot);
-
-                Debug.Log($"Đã gỡ bom thành công! Bom nằm ở vị trí: {randomSlot}");
-
-                // 4. Update UI & End Turn
-                UpdateUIForBot(currentP);
-                EndTurn();
-            }
-            return; // Quan trọng: Return luôn, không chạy logic đánh bài thường bên dưới
-        }
-
-        // B. NẾU KHÔNG TRÚNG BOOM
-        // 1. Xóa lá bài và đưa vào bộ bỏ (xử lý data0
-        ProcessCardData(currentP, cardObj.cardType);
-
-        // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
-        cardObj.PlayCard(discardPileTransform);
-
-        // 3. Reset trạng thái nút
-        CardController.selectedCard = null;
-
-        // Cập nhật lại UI tay
-        UpdateUIForBot(currentP);
-
-        // Bạn có thể thêm logic EndTurn/ApplyEffect tùy theo loại bài tại đây
-        // Ví dụ: EndTurn();
-    }
-
-    // Hàm sự kiện của nút rút bài
-    public void OnDrawButtonPress()
-    {
-        // Cần phải kiểm tra xem có phải lượt của Human Player không (đảm bảo an toàn)
-        Player currentP = players[currentPlayerIndex];
-        if (currentP.type == PlayerType.Human)
-        {
-            // Bắt đầu Routine rút bài
-            StartCoroutine(DrawCardRoutine());
-        }
-    }
-
     // Hàm xóa bài khỏi tay và thêm vào bộ bỏ (chỉ xử lý data)
     private void ProcessCardData(Player player, DrawPileManager.CardType cardType)
     {
@@ -440,6 +244,40 @@ public class GameManager : MonoBehaviour
         // 3. (Mở rộng sau này) Xử lý hiệu ứng bài tại đây
         // HandleCardEffect(cardType); 
         // Ví dụ: Nếu là Attack -> nextTurnCount = 2;
+    }
+
+    //Xử lý hiệu ứng bài
+    public void HandleCardEffect(DrawPileManager.CardType cardType)
+    {
+        switch (cardType)
+        {
+            case DrawPileManager.CardType.Skip:
+                Debug.Log("<color=cyan>Effect: SKIP TURN (Bỏ lượt)</color>");
+                // Skip đơn giản là kết thúc lượt mà không cần rút bài
+                EndTurn();
+                break;
+
+            case DrawPileManager.CardType.Shuffle:
+                Debug.Log("<color=cyan>Effect: SHUFFLE (Xào bài)</color>");
+                // Gọi hàm xào bài từ DrawPileManager
+                drawPileManager.ShuffleDrawPile();
+
+                // Lưu ý: Shuffle không kết thúc lượt, người chơi vẫn phải rút bài hoặc đánh tiếp
+                // Nên ở đây ta KHÔNG gọi EndTurn()
+                break;
+
+            case DrawPileManager.CardType.Attack:
+                Debug.Log("Effect: ATTACK (Chưa cài đặt)");
+                // Logic Attack sẽ phức tạp hơn (bắt người sau đi 2 lượt), làm sau
+                // Tạm thời cho nó giống Skip
+                EndTurn();
+                break;
+
+            case DrawPileManager.CardType.SeeFuture:
+            case DrawPileManager.CardType.DrawBottom:
+                Debug.Log("CEffect: SeeFuture (Chưa cài đặt)");
+                break;
+        }
     }
 
     // Hàm xử lý người chơi bị loại
@@ -503,9 +341,179 @@ public class GameManager : MonoBehaviour
 
         return false; // Chưa ai thắng, chơi tiếp
     }
+    #endregion
+
+    #region TURN LOGIC
+    void StartTurn()
+    {
+        Player currentP = players[currentPlayerIndex];
+        if (currentP.isDead) { EndTurn(); return; }
+
+        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}";
+
+        if (currentP.type == PlayerType.Human)
+        {
+            if (drawButton != null) drawButton.interactable = true;
+        }
+        else
+        {
+            if (drawButton != null) drawButton.interactable = false;
+            StartCoroutine(BotPlayRoutine());
+        }
+    }
+
+    public void EndTurn()
+    {
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.Count; // Giống bounded buffer
+        StartTurn();
+    }
+    #endregion
+
+    #region BOT LOGIC
+    // Quản lý lượt chơi của Bot
+    IEnumerator BotPlayRoutine()
+    {
+        // Bot sẽ chờ để 1 khoảng time ngẫu nhiên để "suy nghĩ"
+        yield return new WaitForSeconds(Random.Range(1.5f, 3f));
+
+        Player botPlayer = players[currentPlayerIndex];
+        DrawPileManager.CardType cardToPlay = BotDecideBestCard(botPlayer);  // Bot kiểm tra bài trên tay để xem nên làm gì ?
+
+        if (cardToPlay != DrawPileManager.CardType.None) // Nếu không rút bài
+        {
+            Debug.Log($"{botPlayer.name} quyết định đánh lá: {cardToPlay}");
+            yield return StartCoroutine(BotPlayCardAction(botPlayer, cardToPlay));
+
+            // Thoát Coroutine ngay, không rút bài nữa.
+            if (cardToPlay == DrawPileManager.CardType.Skip || cardToPlay == DrawPileManager.CardType.Attack)
+            {
+                yield break;
+            }
 
 
-    // --- UI LOGIC ---
+            // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
+        }
+         // === TRƯỜNG HỢP 2: KHÔNG CÓ BÀI NGON -> RÚT BÀI ===
+        Debug.Log($"{botPlayer.name} quyết định RÚT BÀI");
+        StartCoroutine(DrawCardRoutine());
+    }
+
+    // Thuật toán chọn bài cho bot
+    DrawPileManager.CardType BotDecideBestCard(Player bot)
+    {
+        // Ưu tiên 1: Nếu có Attack -> Đánh luôn cho ngầu
+        //if (bot.hand.Contains(DrawPileManager.CardType.Attack))
+        //{
+        //    return DrawPileManager.CardType.Attack;
+        //}
+
+        // Ưu tiên 2: Nếu có SeeFuture -> Đánh để soi
+        // if (bot.hand.Contains(...SeeFuture...)) return ...
+
+        // Ưu tiên 3: Đánh lá skip
+        if (bot.hand.Contains(DrawPileManager.CardType.Skip))
+        {
+            return DrawPileManager.CardType.Skip;
+        }
+
+        // Mặc định: Không đánh gì cả (để đi Rút bài)
+        return DrawPileManager.CardType.None; // Tạm quy ước Skip ở hàm này là "Bỏ qua việc đánh"
+    }
+
+    // Hành động đánh bài của bot   
+    IEnumerator BotPlayCardAction(Player bot, DrawPileManager.CardType cardType)
+    {
+        // 1. Xóa bài khỏi tay Bot (xóa trong data)
+        bot.hand.Remove(cardType);
+        drawPileManager.AddToDiscardPile(cardType);
+
+        // 2. Cập nhật UI (Xóa bớt 1 lưng bài)
+        UpdateUIForBot(bot);
+
+        // 3. Spawn Visual lá bài bay ra giữa bàn (cho người chơi thấy Bot vừa đánh gì)
+        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);
+
+        // ... Code Animation bay vào DiscardPile ...
+        yield return new WaitForSeconds(1f); 
+        cardVisual.transform.SetParent(discardPileTransform);
+        cardVisual.transform.localPosition = Vector3.zero;
+        cardVisual.transform.localRotation = Quaternion.identity;
+        cardVisual.transform.localScale = Vector3.one;
+
+        // 4. Xử lý hiệu ứng bài
+        HandleCardEffect(cardType);
+    }
+    #endregion
+
+    #region HUMAN INPUT
+
+    // Hàm sự kiện của nút đánh bài
+    public void OnPlayCardButtonPress()
+    {
+        if (CardController.selectedCard == null) return;
+
+        CardController cardObj = CardController.selectedCard;
+        Player currentP = players[currentPlayerIndex];
+            
+
+        // A. NẾU ĐANG TRÚNG BOOM
+        if (IsDefusing)
+        {
+            // Chỉ chấp nhận thẻ Defuse
+            if (cardObj.cardType == DrawPileManager.CardType.Defuse)
+            {
+                // 1. Xóa bài khỏi tay & bay vào Discard Pile
+                ProcessCardData(currentP, cardObj.cardType);
+                cardObj.PlayCard(discardPileTransform);
+
+                // 2. Tắt chế độ nguy hiểm
+                IsDefusing = false;
+
+                // 3. Xử lý Quả Bom đang treo (pendingBombVisual)
+
+                Destroy(pendingBombVisual); // Xóa visual bom cũ
+
+                int randomSlot = Random.Range(0, drawPileManager.GetRemainingCount());
+                drawPileManager.InsertCardToDeck(DrawPileManager.CardType.Explode, randomSlot);
+
+                Debug.Log($"Đã gỡ bom thành công! Bom nằm ở vị trí: {randomSlot}");
+
+                // 4. Update UI & End Turn
+                UpdateUIForBot(currentP);
+                EndTurn();
+            }
+            return; // Quan trọng: Return luôn, không chạy logic đánh bài thường bên dưới
+        }
+
+        // B. NẾU KHÔNG TRÚNG BOOM
+        // 1. Xóa lá bài và đưa vào bộ bỏ (xử lý data0
+        ProcessCardData(currentP, cardObj.cardType);
+
+        // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
+        cardObj.PlayCard(discardPileTransform);
+
+        // 3. Reset trạng thái
+        CardController.selectedCard = null; 
+        UpdateUIForBot(currentP);
+
+        // 4. Xử lý hiệu ứng lá bài
+        HandleCardEffect(cardObj.cardType);
+    }
+
+    // Hàm sự kiện của nút rút bài
+    public void OnDrawButtonPress()
+    {
+        // Cần phải kiểm tra xem có phải lượt của Human Player không (đảm bảo an toàn)
+        Player currentP = players[currentPlayerIndex];
+        if (currentP.type == PlayerType.Human)
+        {
+            // Bắt đầu Routine rút bài
+            StartCoroutine(DrawCardRoutine());
+        }
+    }   
+    #endregion
+
+    #region UI LOGIC
     GameObject GetPrefabByType(DrawPileManager.CardType type)
     {
         switch (type)
@@ -662,4 +670,5 @@ public class GameManager : MonoBehaviour
             yield return null;
         }
     }
+    #endregion
 }

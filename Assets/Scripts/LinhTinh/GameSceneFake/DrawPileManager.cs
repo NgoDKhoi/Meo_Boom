@@ -75,6 +75,7 @@ public class DrawPileManager : MonoBehaviour
             drawPile[i] = drawPile[r];
             drawPile[r] = temp;
         }
+        Debug.Log("Đã xào bài");
     }
 
     // Hàm rút bài trả về giá trị thẻ (Không xử lý logic game ở đây)
