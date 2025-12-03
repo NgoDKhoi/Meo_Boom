@@ -73,6 +73,38 @@ public class GameManager : MonoBehaviour
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            // Trường hợp có 2 GameManager (không nên xảy ra)
+            Destroy(gameObject);
+        }
+    }
+
+    void Start()
+    {
+        if (turnInfoText != null)
+        {
+            CardController.canvasTransform = turnInfoText.transform.parent;
+        }
+
+        StartGameSequence();
+    }
+
+    void Update()
+    {
+        // Update trạng thái nút Đánh bài
+        if (playButton != null)
+        {
+            playButton.interactable = (CardController.selectedCard != null);
+        }
+    }
+
     #region CORE GAMEPLAY
     // Bắt đầu game
     void StartGameSequence()
@@ -141,7 +173,7 @@ public class GameManager : MonoBehaviour
     }
 
     // Rút bài
-    IEnumerator DrawCardRoutine()
+    IEnumerator DrawCardRoutine(bool fromBottom = false)
     {
         {
             // Kiểm tra bộ rút, còn lá bài còn hay không, nếu không thì break   
@@ -157,7 +189,15 @@ public class GameManager : MonoBehaviour
             if (currentP.type == PlayerType.Human && drawButton != null) drawButton.interactable = false;
 
             // 1. Lấy dữ liệu từ DrawPileManager
-            DrawPileManager.CardType drawnCard = drawPileManager.DrawCardData();
+            DrawPileManager.CardType drawnCard;
+            if (fromBottom)
+            {
+                drawnCard = drawPileManager.DrawBottomCardData(); // Gọi hàm rút đáy
+            }
+            else
+            {
+                drawnCard = drawPileManager.DrawCardData(); // Gọi hàm rút thường
+            }
 
             // 2. Xử lý logic Explode (Rút trúng bom)
             if (drawnCard == DrawPileManager.CardType.Explode)
@@ -273,8 +313,13 @@ public class GameManager : MonoBehaviour
                 EndTurn();
                 break;
 
-            case DrawPileManager.CardType.SeeFuture:
             case DrawPileManager.CardType.DrawBottom:
+                Debug.Log("<color=cyan>Effect: DRAW BOTTOM</color>");
+                // Rút bài từ đáy -> Gọi hàm với tham số true
+                StartCoroutine(DrawCardRoutine(fromBottom: true));
+                break;
+
+            case DrawPileManager.CardType.SeeFuture:
                 Debug.Log("CEffect: SeeFuture (Chưa cài đặt)");
                 break;
         }
@@ -385,11 +430,12 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(BotPlayCardAction(botPlayer, cardToPlay));
 
             // Thoát Coroutine ngay, không rút bài nữa.
-            if (cardToPlay == DrawPileManager.CardType.Skip || cardToPlay == DrawPileManager.CardType.Attack)
+            if (cardToPlay == DrawPileManager.CardType.Skip || 
+                cardToPlay == DrawPileManager.CardType.Attack ||
+                cardToPlay == DrawPileManager.CardType.DrawBottom)
             {
                 yield break;
             }
-
 
             // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
         }

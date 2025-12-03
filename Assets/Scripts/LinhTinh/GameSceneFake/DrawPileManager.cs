@@ -52,10 +52,9 @@ public class DrawPileManager : MonoBehaviour
         {
             drawPile.Add(CardType.Explode);
         }
+        Debug.Log($"DrawPileManager: Đã thêm {explodeCardCount} lá Bom vào bài");
 
-        // Xào bài lần 2 (Lần này mới thực sự nguy hiểm)
         ShuffleDrawPile();
-        Debug.Log($"DrawPileManager: Đã thêm {explodeCardCount} lá Bom và xào lại bài!");
     }
 
     // Hàm nhét bài và vào vị trí cụ thể
@@ -78,7 +77,7 @@ public class DrawPileManager : MonoBehaviour
         Debug.Log("Đã xào bài");
     }
 
-    // Hàm rút bài trả về giá trị thẻ (Không xử lý logic game ở đây)
+    // Hàm rút bài trả về giá trị thẻ
     public CardType DrawCardData()
     {
         if (drawPile.Count <= 0) return CardType.Skip; // Hết bài thì trả về rác
@@ -86,6 +85,20 @@ public class DrawPileManager : MonoBehaviour
         CardType c = drawPile[0];
         drawPile.RemoveAt(0);
         Debug.Log($"Bộ bài còn <color=red>{GetRemainingCount()} lá </color>");
+        return c;
+    }
+
+    // Hàm rút bài từ đáy (Draw Bottom)
+    public CardType DrawBottomCardData()
+    {
+        if (drawPile.Count <= 0) return CardType.Skip;
+
+        // Lấy lá cuối cùng (đáy)
+        int lastIndex = drawPile.Count - 1;
+        CardType c = drawPile[lastIndex];
+        drawPile.RemoveAt(lastIndex);
+
+        Debug.Log($"Rút từ ĐÁY! Bộ bài còn <color=red>{GetRemainingCount()} lá </color>");
         return c;
     }
 
