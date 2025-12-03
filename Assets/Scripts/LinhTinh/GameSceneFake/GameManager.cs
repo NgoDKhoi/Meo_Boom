@@ -284,6 +284,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    // --- Các hàm hỗ trợ ---
+
     // Quản lý lượt chơi của Bot
     IEnumerator BotPlayRoutine()
     {
@@ -345,25 +348,14 @@ public class GameManager : MonoBehaviour
         GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);
 
         // ... Code Animation bay vào DiscardPile ...
-        yield return new WaitForSeconds(1f); // Chờ bài bay xong
-
-        Destroy(cardVisual);
+        yield return new WaitForSeconds(1f); 
+        cardVisual.transform.SetParent(discardPileTransform);
+        cardVisual.transform.localPosition = Vector3.zero;
+        cardVisual.transform.localRotation = Quaternion.identity;
+        cardVisual.transform.localScale = Vector3.one;
 
         // 4. Xử lý hiệu ứng bài (Attack, Skip...)
         // HandleCardEffect(cardType);
-    }
-
-     // --- ACTION LOGIC ---
-    // Hàm sự kiện của nút rút bài
-    public void OnDrawButtonPress()
-    {
-        // Cần phải kiểm tra xem có phải lượt của Human Player không (đảm bảo an toàn)
-        Player currentP = players[currentPlayerIndex];
-        if (currentP.type == PlayerType.Human)
-        {
-            // Bắt đầu Routine rút bài
-            StartCoroutine(DrawCardRoutine());
-        }
     }
 
     // Hàm sự kiện của nút đánh bài
@@ -373,7 +365,7 @@ public class GameManager : MonoBehaviour
 
         CardController cardObj = CardController.selectedCard;
         Player currentP = players[currentPlayerIndex];
-
+            
 
         // A. NẾU ĐANG TRÚNG BOOM
         if (IsDefusing)
@@ -381,7 +373,7 @@ public class GameManager : MonoBehaviour
             // Chỉ chấp nhận thẻ Defuse
             if (cardObj.cardType == DrawPileManager.CardType.Defuse)
             {
-                // 1. Xóa Defuse khỏi tay & Bay vào Discard Pile
+                // 1. Xóa bài khỏi tay & bay vào Discard Pile
                 ProcessCardData(currentP, cardObj.cardType);
                 cardObj.PlayCard(discardPileTransform);
 
@@ -421,7 +413,19 @@ public class GameManager : MonoBehaviour
         // Ví dụ: EndTurn();
     }
 
-    // Hàm xóa bài khỏi tay và thêm vào bộ bỏ
+    // Hàm sự kiện của nút rút bài
+    public void OnDrawButtonPress()
+    {
+        // Cần phải kiểm tra xem có phải lượt của Human Player không (đảm bảo an toàn)
+        Player currentP = players[currentPlayerIndex];
+        if (currentP.type == PlayerType.Human)
+        {
+            // Bắt đầu Routine rút bài
+            StartCoroutine(DrawCardRoutine());
+        }
+    }
+
+    // Hàm xóa bài khỏi tay và thêm vào bộ bỏ (chỉ xử lý data)
     private void ProcessCardData(Player player, DrawPileManager.CardType cardType)
     {
         // 1. Xóa khỏi tay (Data)
