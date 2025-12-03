@@ -680,28 +680,35 @@ MonoBehaviour:
   drawButton: {fileID: 586141263}
   playButton: {fileID: 2029041586}
   turnInfoText: {fileID: 355001379}
+  victoryPanel: {fileID: 2091677458}
+  winnerNameText: {fileID: 1731648303}
   players:
-  - name: Main Player
+  - nameDisplaySource: {fileID: 970654086}
+    name: Main Player
     type: 0
     hand: 
     isDead: 0
     botDisplayUI: {fileID: 0}
-  - name: Bot 1
+  - nameDisplaySource: {fileID: 550365545}
+    name: Bot 1
     type: 1
     hand: 
     isDead: 0
     botDisplayUI: {fileID: 704343361}
-  - name: Bot 2
+  - nameDisplaySource: {fileID: 1891403409}
+    name: Bot 2
     type: 1
     hand: 
     isDead: 0
     botDisplayUI: {fileID: 1706459568}
-  - name: Bot 3
+  - nameDisplaySource: {fileID: 197156862}
+    name: Bot 3
     type: 1
     hand: 
     isDead: 0
     botDisplayUI: {fileID: 534522105}
   currentPlayerIndex: 0
+  turnsRemaining: 1
   discardPileCardScale: {x: 1, y: 1, z: 1}
 --- !u!4 &447230397
 Transform:
@@ -755,7 +762,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -805.24005, y: 291.06}
+  m_AnchoredPosition: {x: -805.24, y: 291.06}
   m_SizeDelta: {x: -1610.48, y: -582.12}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &534522103
@@ -1352,7 +1359,6 @@ GameObject:
   - component: {fileID: 978530193}
   - component: {fileID: 978530192}
   - component: {fileID: 978530194}
-  - component: {fileID: 978530195}
   - component: {fileID: 978530196}
   m_Layer: 0
   m_Name: Panel_PlayerHandArea
@@ -1444,18 +1450,6 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!114 &978530195
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 978530190}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59156b58c5d7a6343b6df96ff104e226, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HandSpacingAdjustment
 --- !u!114 &978530196
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1918,7 +1912,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 143, y: -154}
+  m_AnchoredPosition: {x: 143, y: -153.99998}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1452469626
@@ -2320,7 +2314,7 @@ GameObject:
   - component: {fileID: 1731648304}
   - component: {fileID: 1731648303}
   m_Layer: 0
-  m_Name: Text (TMP)
+  m_Name: WinnnerName_Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2374,8 +2368,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2398,7 +2392,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -2478,7 +2472,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.00000029797, y: 85}
+  m_AnchoredPosition: {x: 0, y: 85}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1891403409
@@ -2733,7 +2727,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2091677459
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2767,7 +2761,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.21960786, g: 0.21960786, b: 0.21960786, a: 0.392}
+  m_Color: {r: 0.5686275, g: 0.5686275, b: 0.5686275, a: 0.5803922}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

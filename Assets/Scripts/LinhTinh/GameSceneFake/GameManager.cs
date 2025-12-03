@@ -201,6 +201,7 @@ public class GameManager : MonoBehaviour
             }
             else
             {
+                Debug.Log($"{currentP.name} quyết định RÚT BÀI");
                 drawnCard = drawPileManager.DrawCardData(); // Gọi hàm rút thường
             }
 
@@ -248,7 +249,7 @@ public class GameManager : MonoBehaviour
                         // 5. Nhét bom lại vào bộ bài (Random vị trí)
                         int randomSlot = Random.Range(0, drawPileManager.GetRemainingCount());
                         drawPileManager.InsertCardToDeck(DrawPileManager.CardType.Explode, randomSlot);
-                        Debug.Log($"{currentP.name} đã gỡ bom và nhét lại vào vị trí: {randomSlot}");
+                        Debug.Log($"{currentP.name} đã gỡ bom và nhét ngẫu nhiên vào vị trí: {randomSlot}");
 
                         // 6. Kết thúc lượt của Bot
                         turnsRemaining--;
@@ -270,25 +271,9 @@ public class GameManager : MonoBehaviour
             // 4. CHẠY ANIMATION BAY VÀ CẬP NHẬT UI
             yield return StartCoroutine(AnimateCardDrawAndAddToHand(currentP, drawnCard, true)); // Luôn là random card khi rút trong lượt
 
-            // 6. Kết thúc lượt
+            // 5. Kết thúc lượt
             turnsRemaining--;
             CheckTurnStatus();
-        }
-    }
-
-    // Hàm kiểm tra trạng thái lượt
-    private void CheckTurnStatus()
-    {
-        if (turnsRemaining > 0)
-        {
-            // Vẫn còn nợ lượt -> Tiếp tục lượt của người này
-            Debug.Log($"Vẫn còn {turnsRemaining} lượt rút nữa!");
-            StartTurn(); // Gọi lại StartTurn để cập nhật UI và cho Bot chạy tiếp
-        }
-        else
-        {
-            // Đã trả hết nợ -> Kết thúc lượt thực sự
-            EndTurn();
         }
     }
 
@@ -310,20 +295,19 @@ public class GameManager : MonoBehaviour
     }
 
     //Xử lý hiệu ứng bài
-    public void HandleCardEffect(DrawPileManager.CardType cardType)
+    public void HandleCardEffect(DrawPileManager.CardType cardType, Player player)
     {
         switch (cardType)
         {
             case DrawPileManager.CardType.Skip:
-                Debug.Log("<color=cyan>Effect: SKIP TURN (Bỏ lượt)</color>");
-                // Skip là giảm đi 1 lượt
+                Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SKIP (Giảm 1 lượt rút)</color>");
                 turnsRemaining--;
                 CheckTurnStatus();
                 break;
 
             case DrawPileManager.CardType.Attack:
-                Debug.Log($"<color=orange>Effect: ATTACK (Tấn công!)</color>");
-                int turnsToPass = 2;
+                Debug.Log($"<color=orange>[{player.name}] kích hoạt Effect: ATTACK (Tấn công!)</color>");
+                int turnsToPass = 2; // Có thể chỉnh thành cộng dồn
                 nextTurnStartingCount = turnsToPass;
                 Debug.Log($"--> Người tiếp theo sẽ phải rút {nextTurnStartingCount} lá!");
                 turnsRemaining = 0;
@@ -331,19 +315,18 @@ public class GameManager : MonoBehaviour
                 break;
 
             case DrawPileManager.CardType.Shuffle:
-                Debug.Log("<color=cyan>Effect: SHUFFLE (Xào bài)</color>");
-                // Gọi hàm xào bài từ DrawPileManager
+                Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SHUFFLE (Xào bài)</color>");
                 drawPileManager.ShuffleDrawPile();
                 break;
 
             case DrawPileManager.CardType.DrawBottom:
-                Debug.Log("<color=cyan>Effect: DRAW BOTTOM</color>");
+                Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: DRAW BOTTOM</color>");
                 // Rút bài từ đáy -> Gọi hàm với tham số true
                 StartCoroutine(DrawCardRoutine(fromBottom: true));
                 break;
 
             case DrawPileManager.CardType.SeeFuture:
-                Debug.Log("CEffect: SeeFuture (Chưa cài đặt)");
+                Debug.Log("Effect: SeeFuture (Chưa cài đặt)");
                 break;
         }
     }
@@ -368,7 +351,7 @@ public class GameManager : MonoBehaviour
 
         // 4. Nếu game chưa kết thúc, chuyển lượt cho người tiếp theo
         nextTurnStartingCount = 1;
-        CheckTurnStatus();
+        EndTurn();
     }
 
     // Hàm kiểm tra xem game đã kết thúc chưa
@@ -412,6 +395,7 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region TURN LOGIC
+    // Bắt đầu lượt
     void StartTurn()
     {
         Player currentP = players[currentPlayerIndex];
@@ -430,9 +414,49 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Hàm kiểm tra trạng thái lượt
+    private void CheckTurnStatus()
+    {
+        Player currentP = players[currentPlayerIndex];
+        if (turnsRemaining > 0)
+        {
+            Debug.Log($"[{currentP.name}] Vẫn còn {turnsRemaining} lượt rút nữa!");
+            if (turnInfoText != null)
+            {
+                string turnDetail = turnsRemaining > 1 ? $" (Phải rút {turnsRemaining} lá)" : "";
+                turnInfoText.text = $"Lượt của: {currentP.name}{turnDetail}";
+            }
+
+            // Nếu là Người, bật lại nút rút bài (vì nó bị tắt lúc bắt đầu DrawCardRoutine)
+            if (currentP.type == PlayerType.Human && drawButton != null)
+            {
+                drawButton.interactable = true;
+            }
+            else if (currentP.type == PlayerType.Bot)
+            {
+                StartCoroutine(BotPlayRoutine());
+            }
+
+        }
+        else
+        {
+            // Đã trả hết nợ -> Kết thúc lượt thực sự
+            EndTurn();
+        }
+    }
+
+    // Kết thúc lượt 
     public void EndTurn()
     {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.Count; // Giống bounded buffer
+        // Áp dụng bounded buffer để chuyển index
+        currentPlayerIndex = (currentPlayerIndex + 1) % players.Count;
+
+        // Gán số lượt phải đi cho người mới
+        turnsRemaining = nextTurnStartingCount;
+
+        // Reset số lượt tiếp theo
+        nextTurnStartingCount = 1;
+
         StartTurn();
     }
     #endregion
@@ -441,6 +465,7 @@ public class GameManager : MonoBehaviour
     // Quản lý lượt chơi của Bot
     IEnumerator BotPlayRoutine()
     {
+        int myTurnIndex = currentPlayerIndex;
         // Bot sẽ chờ để 1 khoảng time ngẫu nhiên để "suy nghĩ"
         yield return new WaitForSeconds(Random.Range(1.5f, 3f));
 
@@ -452,7 +477,9 @@ public class GameManager : MonoBehaviour
             Debug.Log($"{botPlayer.name} quyết định đánh lá: {cardToPlay}");
             yield return StartCoroutine(BotPlayCardAction(botPlayer, cardToPlay));
 
-            if (turnsRemaining <= 0)
+            // Sau khi đánh bài xong (ví dụ Skip), index bot có thể đã thay đổi (do EndTurn).
+            // Nếu index đã đổi, nghĩa là lượt của Bot này đã hết -> THOÁT NGAY.
+            if (currentPlayerIndex != myTurnIndex)
             {
                 yield break;
             }
@@ -460,7 +487,6 @@ public class GameManager : MonoBehaviour
             // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
         }
          // === RÚT BÀI ===
-        Debug.Log($"{botPlayer.name} quyết định RÚT BÀI");
         StartCoroutine(DrawCardRoutine());
     }
 
@@ -498,7 +524,7 @@ public class GameManager : MonoBehaviour
         UpdateUIForBot(bot);
 
         // 3. Spawn Visual lá bài bay ra giữa bàn (cho người chơi thấy Bot vừa đánh gì)
-        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);
+        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);    
 
         // ... Code Animation bay vào DiscardPile ...
         yield return new WaitForSeconds(1f); 
@@ -508,7 +534,7 @@ public class GameManager : MonoBehaviour
         cardVisual.transform.localScale = Vector3.one;
 
         // 4. Xử lý hiệu ứng bài
-        HandleCardEffect(cardType);
+        HandleCardEffect(cardType, bot);
     }
     #endregion
 
@@ -547,13 +573,15 @@ public class GameManager : MonoBehaviour
 
                 // 4. Update UI & End Turn
                 UpdateUIForBot(currentP);
-                EndTurn();
+                turnsRemaining--;
+                CheckTurnStatus();
             }
             return; // Quan trọng: Return luôn, không chạy logic đánh bài thường bên dưới
         }
 
         // B. NẾU KHÔNG TRÚNG BOOM
-        // 1. Xóa lá bài và đưa vào bộ bỏ (xử lý data0
+        Debug.Log($"Bạn quyết định đánh lá: {cardObj.cardType}");
+        // 1. Xóa lá bài và đưa vào bộ bỏ (xử lý data)
         ProcessCardData(currentP, cardObj.cardType);
 
         // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
@@ -564,7 +592,7 @@ public class GameManager : MonoBehaviour
         UpdateUIForBot(currentP);
 
         // 4. Xử lý hiệu ứng lá bài
-        HandleCardEffect(cardObj.cardType);
+        HandleCardEffect(cardObj.cardType, currentP);
     }
 
     // Hàm sự kiện của nút rút bài
