@@ -5,6 +5,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 using static DrawPileManager;
+using static GameManager;
 
 public class GameManager : MonoBehaviour
 {
@@ -66,6 +67,8 @@ public class GameManager : MonoBehaviour
     [Header("--- GAME STATE ---")]
     public List<Player> players = new List<Player>();
     public int currentPlayerIndex = 0;
+    public int turnsRemaining = 1; // Số lượt rút còn lại của người hiện tại
+    private int nextTurnStartingCount = 1; // Số lượt sẽ chuyển cho người kế tiếp (mặc định là 1)
 
     [Header("--- BOMB LOGIC ---")]
     public bool IsDefusing { get; private set; } = false; // Trạng thái đang gỡ bom
@@ -113,6 +116,8 @@ public class GameManager : MonoBehaviour
         currentPlayerIndex = 0;
         IsDefusing = false;
         CardController.selectedCard = null;
+        turnsRemaining = 1;
+        nextTurnStartingCount = 1;
 
         // Xóa visual bom nếu còn sót lại từ ván trước
         if (pendingBombVisual != null) Destroy(pendingBombVisual);
@@ -246,7 +251,8 @@ public class GameManager : MonoBehaviour
                         Debug.Log($"{currentP.name} đã gỡ bom và nhét lại vào vị trí: {randomSlot}");
 
                         // 6. Kết thúc lượt của Bot
-                        EndTurn();
+                        turnsRemaining--;
+                        CheckTurnStatus();
                     }
                 }
                 else
@@ -265,6 +271,23 @@ public class GameManager : MonoBehaviour
             yield return StartCoroutine(AnimateCardDrawAndAddToHand(currentP, drawnCard, true)); // Luôn là random card khi rút trong lượt
 
             // 6. Kết thúc lượt
+            turnsRemaining--;
+            CheckTurnStatus();
+        }
+    }
+
+    // Hàm kiểm tra trạng thái lượt
+    private void CheckTurnStatus()
+    {
+        if (turnsRemaining > 0)
+        {
+            // Vẫn còn nợ lượt -> Tiếp tục lượt của người này
+            Debug.Log($"Vẫn còn {turnsRemaining} lượt rút nữa!");
+            StartTurn(); // Gọi lại StartTurn để cập nhật UI và cho Bot chạy tiếp
+        }
+        else
+        {
+            // Đã trả hết nợ -> Kết thúc lượt thực sự
             EndTurn();
         }
     }
@@ -293,24 +316,24 @@ public class GameManager : MonoBehaviour
         {
             case DrawPileManager.CardType.Skip:
                 Debug.Log("<color=cyan>Effect: SKIP TURN (Bỏ lượt)</color>");
-                // Skip đơn giản là kết thúc lượt mà không cần rút bài
-                EndTurn();
+                // Skip là giảm đi 1 lượt
+                turnsRemaining--;
+                CheckTurnStatus();
+                break;
+
+            case DrawPileManager.CardType.Attack:
+                Debug.Log($"<color=orange>Effect: ATTACK (Tấn công!)</color>");
+                int turnsToPass = 2;
+                nextTurnStartingCount = turnsToPass;
+                Debug.Log($"--> Người tiếp theo sẽ phải rút {nextTurnStartingCount} lá!");
+                turnsRemaining = 0;
+                CheckTurnStatus();
                 break;
 
             case DrawPileManager.CardType.Shuffle:
                 Debug.Log("<color=cyan>Effect: SHUFFLE (Xào bài)</color>");
                 // Gọi hàm xào bài từ DrawPileManager
                 drawPileManager.ShuffleDrawPile();
-
-                // Lưu ý: Shuffle không kết thúc lượt, người chơi vẫn phải rút bài hoặc đánh tiếp
-                // Nên ở đây ta KHÔNG gọi EndTurn()
-                break;
-
-            case DrawPileManager.CardType.Attack:
-                Debug.Log("Effect: ATTACK (Chưa cài đặt)");
-                // Logic Attack sẽ phức tạp hơn (bắt người sau đi 2 lượt), làm sau
-                // Tạm thời cho nó giống Skip
-                EndTurn();
                 break;
 
             case DrawPileManager.CardType.DrawBottom:
@@ -340,12 +363,12 @@ public class GameManager : MonoBehaviour
         // 3. KIỂM TRA THẮNG THUA NGAY TẠI ĐÂY
         if (CheckForWinner())
         {
-            // Nếu đã có người thắng, không làm gì thêm nữa
             return;
         }
 
         // 4. Nếu game chưa kết thúc, chuyển lượt cho người tiếp theo
-        EndTurn();
+        nextTurnStartingCount = 1;
+        CheckTurnStatus();
     }
 
     // Hàm kiểm tra xem game đã kết thúc chưa
@@ -429,17 +452,14 @@ public class GameManager : MonoBehaviour
             Debug.Log($"{botPlayer.name} quyết định đánh lá: {cardToPlay}");
             yield return StartCoroutine(BotPlayCardAction(botPlayer, cardToPlay));
 
-            // Thoát Coroutine ngay, không rút bài nữa.
-            if (cardToPlay == DrawPileManager.CardType.Skip || 
-                cardToPlay == DrawPileManager.CardType.Attack ||
-                cardToPlay == DrawPileManager.CardType.DrawBottom)
+            if (turnsRemaining <= 0)
             {
                 yield break;
             }
 
             // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
         }
-         // === TRƯỜNG HỢP 2: KHÔNG CÓ BÀI NGON -> RÚT BÀI ===
+         // === RÚT BÀI ===
         Debug.Log($"{botPlayer.name} quyết định RÚT BÀI");
         StartCoroutine(DrawCardRoutine());
     }
