@@ -326,9 +326,68 @@ public class GameManager : MonoBehaviour
                 break;
 
             case DrawPileManager.CardType.SeeFuture:
-                Debug.Log("Effect: SeeFuture (Chưa cài đặt)");
+                Debug.Log($"<color=purple>[{player.name}] kích hoạt Effect: SEE FUTURE (Soi 3 lá đầu)</color>");
+                if (player.type == PlayerType.Human)
+                {
+                    List<DrawPileManager.CardType> futureCards = drawPileManager.GetTopCards(3);
+                    StartCoroutine(ShowFutureCardsRoutine(futureCards));
+                }
+                else
+                {
+                    // Bot thì chỉ log thôi, không hiện lên màn hình kẻo lộ bài
+                    Debug.Log($"Bot {player.name} đang tỏ ra nguy hiểm khi nhìn trộm tương lai...");
+                }
+                // Lưu ý: See Future không kết thúc lượt, người chơi sẽ tự quyết định làm gì tiếp theo
                 break;
         }
+    }
+
+    // Coroutine hiển thị 3 lá tương lai
+    IEnumerator ShowFutureCardsRoutine(List<DrawPileManager.CardType> cards)
+    {
+        // 1. Khóa nút bấm để người chơi tập trung xem
+        if (drawButton != null) drawButton.interactable = false;
+        if (playButton != null) playButton.interactable = false;
+
+        if (turnInfoText != null) turnInfoText.text = "ĐANG SOI TƯƠNG LAI...";
+
+        // 2. Tạo Visual cho các lá bài
+        List<GameObject> tempCards = new List<GameObject>();
+        float startX = -((cards.Count - 1) * 250f) / 2; // Căn giữa, khoảng cách 250 unit
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            GameObject cardObj = Instantiate(GetPrefabByType(cards[i]), CardController.canvasTransform);
+
+            // Đặt vị trí (Giữa màn hình + Offset theo chiều ngang)
+            cardObj.transform.localPosition = new Vector3(startX + (i * 250f), 0, 0);
+            cardObj.transform.localScale = Vector3.one * 1.5f; // Phóng to lên chút cho dễ nhìn
+
+            // Xóa script điều khiển để không bấm vào được
+            Destroy(cardObj.GetComponent<CardController>());
+            Destroy(cardObj.GetComponent<Button>());
+
+            tempCards.Add(cardObj);
+        }
+
+        // 3. Chờ 4 giây
+        yield return new WaitForSeconds(4.0f);
+
+        // 4. Xóa Visual
+        foreach (var c in tempCards)
+        {
+            Destroy(c);
+        }
+
+        // 5. Trả lại quyền điều khiển (Mở lại nút)
+        Player currentP = players[currentPlayerIndex];
+        string turnDetail = turnsRemaining > 1 ? $" (Phải rút {turnsRemaining} lá)" : "";
+        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}{turnDetail}";
+
+        if (drawButton != null) drawButton.interactable = true;
+
+        // Cập nhật lại nút Play (nếu đang chọn bài thì sáng, không thì tắt)
+        if (playButton != null) playButton.interactable = (CardController.selectedCard != null);
     }
 
     // Hàm xử lý người chơi bị loại
@@ -484,7 +543,48 @@ public class GameManager : MonoBehaviour
                 yield break;
             }
 
-            // Gợi ý sau này phát triển, ta có thể cho Bot đệ quy gọi lại suy nghĩ hoặc đánh bài để EndTurn.
+            if (cardToPlay == DrawPileManager.CardType.Skip ||
+                cardToPlay == DrawPileManager.CardType.Attack ||
+                cardToPlay == DrawPileManager.CardType.DrawBottom)
+            {
+                yield break;
+            }
+
+            if (cardToPlay == DrawPileManager.CardType.SeeFuture)
+            {
+                // Bot nhìn trộm 3 lá đầu
+                var topCards = drawPileManager.GetTopCards(3);
+                bool hasBomb = false;
+                foreach (var c in topCards) if (c == DrawPileManager.CardType.Explode) hasBomb = true;
+
+                if (hasBomb)
+                {
+                    Debug.Log($"<color=yellow>{botPlayer.name} thấy Bom trong tương lai! Đang tìm cách né...</color>");
+                    yield return new WaitForSeconds(1f); // Giả vờ suy nghĩ
+
+                    DrawPileManager.CardType escapeCard = DrawPileManager.CardType.None;
+
+                    // Ưu tiên Skip > Attack > DrawBottom > Shuffle
+                    if (botPlayer.hand.Contains(DrawPileManager.CardType.Skip)) escapeCard = DrawPileManager.CardType.Skip;
+                    else if (botPlayer.hand.Contains(DrawPileManager.CardType.Attack)) escapeCard = DrawPileManager.CardType.Attack;
+                    else if (botPlayer.hand.Contains(DrawPileManager.CardType.DrawBottom)) escapeCard = DrawPileManager.CardType.DrawBottom;
+                    else if (botPlayer.hand.Contains(DrawPileManager.CardType.Shuffle)) escapeCard = DrawPileManager.CardType.Shuffle;
+
+                    if (escapeCard != DrawPileManager.CardType.None)
+                    {
+                        Debug.Log($"<color=green>{botPlayer.name} quyết định đánh tiếp lá: {escapeCard} để né bom!</color>");
+                        yield return StartCoroutine(BotPlayCardAction(botPlayer, escapeCard));
+
+                        // Kiểm tra lại lượt sau khi né
+                        if (currentPlayerIndex != myTurnIndex) yield break;
+                        if (escapeCard == DrawPileManager.CardType.Skip || escapeCard == DrawPileManager.CardType.Attack || escapeCard == DrawPileManager.CardType.DrawBottom) yield break;
+                    }
+                    else
+                    {
+                        Debug.Log($"{botPlayer.name} không có bài né! PHẢI CHỊUU."); 
+                    }
+                }
+            }
         }
          // === RÚT BÀI ===
         StartCoroutine(DrawCardRoutine());
@@ -500,14 +600,21 @@ public class GameManager : MonoBehaviour
             if (bot.hand.Contains(DrawPileManager.CardType.Attack)) return DrawPileManager.CardType.Attack;
         }
 
-        // Ưu tiên 2: Nếu có SeeFuture -> Đánh để soi
-        // if (bot.hand.Contains(...SeeFuture...)) return ...
+        // Ưu tiên 2: Đánh lá SeeFuture -> để soi
+        if (bot.hand.Contains(DrawPileManager.CardType.SeeFuture) && Random.value > 0.2f)
+            return DrawPileManager.CardType.SeeFuture;
 
-        // Ưu tiên 3: Đánh lá skip
-        if (bot.hand.Contains(DrawPileManager.CardType.Skip))
-        {
-            return DrawPileManager.CardType.Skip;
-        }
+        // Ngẫu hứng đánh lá Attack
+        if (bot.hand.Contains(DrawPileManager.CardType.Attack) && Random.value > 0.7f)
+            return DrawPileManager.CardType.Attack;
+
+        // Ngẫu hứng đánh lá DrawBottom
+        if (bot.hand.Contains(DrawPileManager.CardType.DrawBottom) && Random.value > 0.7f)
+            return DrawPileManager.CardType.DrawBottom;
+
+        // Ngẫu hứng đánh lá Shuffle
+        if (bot.hand.Contains(DrawPileManager.CardType.Shuffle) && Random.value > 0.5f)
+            return DrawPileManager.CardType.Shuffle;
 
         // Mặc định: Không đánh gì cả (để đi Rút bài)
         return DrawPileManager.CardType.None; // Tạm quy ước Skip ở hàm này là "Bỏ qua việc đánh"

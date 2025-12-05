@@ -102,6 +102,21 @@ public class DrawPileManager : MonoBehaviour
         return c;
     }
 
+    // Hàm lấy ds lá bài trên cùng để xem
+    public List<CardType> GetTopCards(int count)
+    {
+        List<CardType> topCards = new List<CardType>();
+
+        // Đảm bảo không lấy quá số lượng bài hiện có
+        int actualCount = Mathf.Min(count, drawPile.Count);
+
+        for (int i = 0; i < actualCount; i++)
+        {
+            topCards.Add(drawPile[i]);
+        }
+        return topCards;
+    }
+
     // Hàm thêm bài đã đánh vào chồng bài bỏ
     public void AddToDiscardPile(CardType card)
     {
