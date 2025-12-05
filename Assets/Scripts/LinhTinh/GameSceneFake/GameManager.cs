@@ -39,6 +39,12 @@ public class GameManager : MonoBehaviour
                 if (string.IsNullOrEmpty(name)) name = "Bot " + Random.Range(1, 100);
             }
         }
+
+        public Vector3 GetEffectPosition()
+        {
+            if (type == PlayerType.Human) return GameManager.Instance.drawButton.transform.position;
+            return botDisplayUI.handArea.position;
+        }
     }
 
     [Header("--- REFERENCES ---")]
@@ -307,9 +313,12 @@ public class GameManager : MonoBehaviour
 
             case DrawPileManager.CardType.Attack:
                 Debug.Log($"<color=orange>[{player.name}] kích hoạt Effect: ATTACK (Tấn công!)</color>");
-                int turnsToPass = 2; // Có thể chỉnh thành cộng dồn
+                int turnsToPass = (turnsRemaining > 1 ? turnsRemaining : 0) + 2;
                 nextTurnStartingCount = turnsToPass;
                 Debug.Log($"--> Người tiếp theo sẽ phải rút {nextTurnStartingCount} lá!");
+                int nextPlayerIndex = (currentPlayerIndex + 1) % players.Count;
+                Player victim = players[nextPlayerIndex];
+
                 turnsRemaining = 0;
                 CheckTurnStatus();
                 break;
@@ -389,6 +398,7 @@ public class GameManager : MonoBehaviour
         // Cập nhật lại nút Play (nếu đang chọn bài thì sáng, không thì tắt)
         if (playButton != null) playButton.interactable = (CardController.selectedCard != null);
     }
+
 
     // Hàm xử lý người chơi bị loại
     public void HandlePlayerDeath(Player p)
