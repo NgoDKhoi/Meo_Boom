@@ -326,9 +326,68 @@ public class GameManager : MonoBehaviour
                 break;
 
             case DrawPileManager.CardType.SeeFuture:
-                Debug.Log("Effect: SeeFuture (Chưa cài đặt)");
+                Debug.Log($"<color=purple>[{player.name}] kích hoạt Effect: SEE FUTURE (Soi 3 lá đầu)</color>");
+                if (player.type == PlayerType.Human)
+                {
+                    List<DrawPileManager.CardType> futureCards = drawPileManager.GetTopCards(3);
+                    StartCoroutine(ShowFutureCardsRoutine(futureCards));
+                }
+                else
+                {
+                    // Bot thì chỉ log thôi, không hiện lên màn hình kẻo lộ bài
+                    Debug.Log($"Bot {player.name} đang tỏ ra nguy hiểm khi nhìn trộm tương lai...");
+                }
+                // Lưu ý: See Future không kết thúc lượt, người chơi sẽ tự quyết định làm gì tiếp theo
                 break;
         }
+    }
+
+    // Coroutine hiển thị 3 lá tương lai
+    IEnumerator ShowFutureCardsRoutine(List<DrawPileManager.CardType> cards)
+    {
+        // 1. Khóa nút bấm để người chơi tập trung xem
+        if (drawButton != null) drawButton.interactable = false;
+        if (playButton != null) playButton.interactable = false;
+
+        if (turnInfoText != null) turnInfoText.text = "ĐANG SOI TƯƠNG LAI...";
+
+        // 2. Tạo Visual cho các lá bài
+        List<GameObject> tempCards = new List<GameObject>();
+        float startX = -((cards.Count - 1) * 250f) / 2; // Căn giữa, khoảng cách 250 unit
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            GameObject cardObj = Instantiate(GetPrefabByType(cards[i]), CardController.canvasTransform);
+
+            // Đặt vị trí (Giữa màn hình + Offset theo chiều ngang)
+            cardObj.transform.localPosition = new Vector3(startX + (i * 250f), 0, 0);
+            cardObj.transform.localScale = Vector3.one * 1.5f; // Phóng to lên chút cho dễ nhìn
+
+            // Xóa script điều khiển để không bấm vào được
+            Destroy(cardObj.GetComponent<CardController>());
+            Destroy(cardObj.GetComponent<Button>());
+
+            tempCards.Add(cardObj);
+        }
+
+        // 3. Chờ 4 giây
+        yield return new WaitForSeconds(4.0f);
+
+        // 4. Xóa Visual
+        foreach (var c in tempCards)
+        {
+            Destroy(c);
+        }
+
+        // 5. Trả lại quyền điều khiển (Mở lại nút)
+        Player currentP = players[currentPlayerIndex];
+        string turnDetail = turnsRemaining > 1 ? $" (Phải rút {turnsRemaining} lá)" : "";
+        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}{turnDetail}";
+
+        if (drawButton != null) drawButton.interactable = true;
+
+        // Cập nhật lại nút Play (nếu đang chọn bài thì sáng, không thì tắt)
+        if (playButton != null) playButton.interactable = (CardController.selectedCard != null);
     }
 
     // Hàm xử lý người chơi bị loại
