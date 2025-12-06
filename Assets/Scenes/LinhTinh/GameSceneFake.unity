@@ -709,6 +709,7 @@ MonoBehaviour:
     botDisplayUI: {fileID: 534522105}
   currentPlayerIndex: 0
   turnsRemaining: 1
+  attackEffectPrefab: {fileID: 5994458097385215752, guid: ff2957983e872034ebc71c5b523ef406, type: 3}
   discardPileCardScale: {x: 1, y: 1, z: 1}
 --- !u!4 &447230397
 Transform:
@@ -762,7 +763,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -805.24, y: 291.06}
+  m_AnchoredPosition: {x: -805.2399, y: 291.06}
   m_SizeDelta: {x: -1610.48, y: -582.12}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &534522103

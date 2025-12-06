@@ -80,6 +80,9 @@ public class GameManager : MonoBehaviour
     public bool IsDefusing { get; private set; } = false; // Trạng thái đang gỡ bom
     private GameObject pendingBombVisual; // Lưu visual quả bom đang treo giữa màn hình
 
+    [Header("--- EFFECT PREFABS ---")]
+    public GameObject attackEffectPrefab;
+
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
     void Awake()
@@ -313,11 +316,33 @@ public class GameManager : MonoBehaviour
 
             case DrawPileManager.CardType.Attack:
                 Debug.Log($"<color=orange>[{player.name}] kích hoạt Effect: ATTACK (Tấn công!)</color>");
+
+                // Tính toán lượt và người bị tấn công
                 int turnsToPass = (turnsRemaining > 1 ? turnsRemaining : 0) + 2;
                 nextTurnStartingCount = turnsToPass;
-                Debug.Log($"--> Người tiếp theo sẽ phải rút {nextTurnStartingCount} lá!");
+
                 int nextPlayerIndex = (currentPlayerIndex + 1) % players.Count;
                 Player victim = players[nextPlayerIndex];
+
+                // 1. KHỞI TẠO HIỆU ỨNG TIA SÉT
+                if (attackEffectPrefab != null)
+                {
+                    // Vị trí KHỞI TẠO (startPos) = Vị trí ĐÍCH (targetPos)
+                    Vector3 spawnPos = victim.GetEffectPosition();
+                    float duration = 0.5f; // Thời gian hiệu ứng tồn tại (EffectAnimation sẽ tự hủy sau thời gian này)
+
+                    // Khởi tạo ngay tại vị trí của victim
+                    GameObject attackFX = Instantiate(attackEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+
+                    EffectAnimation fxPlayer = attackFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null)
+                    {
+                        // Cài đặt duration cho EffectAnimation, KHÔNG gọi hàm di chuyển
+                        fxPlayer.effectDuration = duration;
+                    }
+                }
+
+                Debug.Log($"--> Người tiếp theo ({victim.name}) sẽ phải rút {nextTurnStartingCount} lá!");
 
                 turnsRemaining = 0;
                 CheckTurnStatus();
