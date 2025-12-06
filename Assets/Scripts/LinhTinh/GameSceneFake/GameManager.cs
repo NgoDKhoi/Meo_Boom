@@ -82,6 +82,7 @@ public class GameManager : MonoBehaviour
 
     [Header("--- EFFECT PREFABS ---")]
     public GameObject attackEffectPrefab;
+    public GameObject shuffleEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -350,7 +351,25 @@ public class GameManager : MonoBehaviour
 
             case DrawPileManager.CardType.Shuffle:
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SHUFFLE (Xào bài)</color>");
-                drawPileManager.ShuffleDrawPile();
+                drawPileManager.ShuffleDrawPile(); // Logic xáo bài
+
+                // GỌI HIỆU ỨNG LỐC XOÁY
+                if (shuffleEffectPrefab != null)
+                {
+                    // Vị trí Spawn: Ngay tại vị trí của Draw Pile (Chồng bài rút)
+                    Vector3 spawnPos = Vector3.zero;
+                    float duration = 2f; // Sử dụng duration đã set trên Prefab
+
+                    // Khởi tạo hiệu ứng trên Canvas
+                    GameObject shuffleFX = Instantiate(shuffleEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+
+                    EffectAnimation fxPlayer = shuffleFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null)
+                    {
+                        // Cài đặt duration
+                        fxPlayer.effectDuration = duration;
+                    }
+                }
                 break;
 
             case DrawPileManager.CardType.DrawBottom:
