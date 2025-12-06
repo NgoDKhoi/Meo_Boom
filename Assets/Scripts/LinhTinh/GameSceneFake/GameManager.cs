@@ -346,12 +346,12 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.Shuffle:
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SHUFFLE (Xào bài)</color>");
 
-                float shuffleDuration = 2.0f; // Thời gian FX Lốc Xoáy
+                float shuffleDuration = 1.5f; // Thời gian FX Lốc Xoáy
 
                 // GỌI HIỆU ỨNG LỐC XOÁY
                 if (shuffleEffectPrefab != null)
                 {
-                    Vector3 spawnPos = Vector3.zero;
+                    Vector3 spawnPos = drawButton.transform.position;
                     GameObject shuffleFX = Instantiate(shuffleEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
                     EffectAnimation fxPlayer = shuffleFX.GetComponent<EffectAnimation>();
                     if (fxPlayer != null) fxPlayer.effectDuration = shuffleDuration;
