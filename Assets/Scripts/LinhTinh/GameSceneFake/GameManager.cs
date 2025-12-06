@@ -83,6 +83,7 @@ public class GameManager : MonoBehaviour
     [Header("--- EFFECT PREFABS ---")]
     public GameObject attackEffectPrefab;
     public GameObject shuffleEffectPrefab;
+    public GameObject seeTheFutureEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -305,7 +306,7 @@ public class GameManager : MonoBehaviour
     }
 
     //Xử lý hiệu ứng bài
-    public void HandleCardEffect(DrawPileManager.CardType cardType, Player player)
+    public IEnumerator HandleCardEffect(DrawPileManager.CardType cardType, Player player)
     {
         switch (cardType)
         {
@@ -318,77 +319,81 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.Attack:
                 Debug.Log($"<color=orange>[{player.name}] kích hoạt Effect: ATTACK (Tấn công!)</color>");
 
-                // Tính toán lượt và người bị tấn công
+                // Logic tính toán và tạo FX giữ nguyên
                 int turnsToPass = (turnsRemaining > 1 ? turnsRemaining : 0) + 2;
                 nextTurnStartingCount = turnsToPass;
 
                 int nextPlayerIndex = (currentPlayerIndex + 1) % players.Count;
                 Player victim = players[nextPlayerIndex];
+                float attackDuration = 1.0f; // Thời gian FX
 
                 // 1. KHỞI TẠO HIỆU ỨNG TIA SÉT
                 if (attackEffectPrefab != null)
                 {
-                    // Vị trí KHỞI TẠO (startPos) = Vị trí ĐÍCH (targetPos)
                     Vector3 spawnPos = victim.GetEffectPosition();
-                    float duration = 0.5f; // Thời gian hiệu ứng tồn tại (EffectAnimation sẽ tự hủy sau thời gian này)
-
-                    // Khởi tạo ngay tại vị trí của victim
                     GameObject attackFX = Instantiate(attackEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
-
                     EffectAnimation fxPlayer = attackFX.GetComponent<EffectAnimation>();
-                    if (fxPlayer != null)
-                    {
-                        // Cài đặt duration cho EffectAnimation, KHÔNG gọi hàm di chuyển
-                        fxPlayer.effectDuration = duration;
-                    }
+                    if (fxPlayer != null) fxPlayer.effectDuration = attackDuration;
                 }
 
-                Debug.Log($"--> Người tiếp theo ({victim.name}) sẽ phải rút {nextTurnStartingCount} lá!");
+                yield return new WaitForSeconds(attackDuration);
 
+                Debug.Log($"--> Người tiếp theo ({victim.name}) sẽ phải rút {nextTurnStartingCount} lá!");
                 turnsRemaining = 0;
                 CheckTurnStatus();
                 break;
 
             case DrawPileManager.CardType.Shuffle:
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SHUFFLE (Xào bài)</color>");
-                drawPileManager.ShuffleDrawPile(); // Logic xáo bài
+
+                float shuffleDuration = 2.0f; // Thời gian FX Lốc Xoáy
 
                 // GỌI HIỆU ỨNG LỐC XOÁY
                 if (shuffleEffectPrefab != null)
                 {
-                    // Vị trí Spawn: Ngay tại vị trí của Draw Pile (Chồng bài rút)
                     Vector3 spawnPos = Vector3.zero;
-                    float duration = 2f; // Sử dụng duration đã set trên Prefab
-
-                    // Khởi tạo hiệu ứng trên Canvas
                     GameObject shuffleFX = Instantiate(shuffleEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
-
                     EffectAnimation fxPlayer = shuffleFX.GetComponent<EffectAnimation>();
-                    if (fxPlayer != null)
-                    {
-                        // Cài đặt duration
-                        fxPlayer.effectDuration = duration;
-                    }
+                    if (fxPlayer != null) fxPlayer.effectDuration = shuffleDuration;
                 }
+
+                yield return new WaitForSeconds(shuffleDuration);
+
+                drawPileManager.ShuffleDrawPile(); // Logic xáo bài
                 break;
 
             case DrawPileManager.CardType.DrawBottom:
+                // DrawBottom không có FX riêng mà chỉ gọi DrawCardRoutine
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: DRAW BOTTOM</color>");
                 // Rút bài từ đáy -> Gọi hàm với tham số true
-                StartCoroutine(DrawCardRoutine(fromBottom: true));
+                // Lưu ý: DrawCardRoutine đã là Coroutine nên dùng 'yield return' để chờ nó xong.
+                yield return StartCoroutine(DrawCardRoutine(fromBottom: true));
                 break;
 
             case DrawPileManager.CardType.SeeFuture:
                 Debug.Log($"<color=purple>[{player.name}] kích hoạt Effect: SEE FUTURE (Soi 3 lá đầu)</color>");
+
+                float futureDuration = 2.0f; // Thời gian FX Mắt Thần
+
+                // 1. GỌI HIỆU ỨNG MẮT THẦN (Giữ nguyên code Instantiate FX)
+                if (seeTheFutureEffectPrefab != null)
+                {
+                    Vector3 spawnPos = Vector3.zero;
+                    GameObject futureFX = Instantiate(seeTheFutureEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+                    EffectAnimation fxPlayer = futureFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null) fxPlayer.effectDuration = futureDuration;
+                }
+
                 if (player.type == PlayerType.Human)
                 {
                     List<DrawPileManager.CardType> futureCards = drawPileManager.GetTopCards(3);
-                    StartCoroutine(ShowFutureCardsRoutine(futureCards));
+                    yield return StartCoroutine(ShowFutureCardsRoutine(futureCards));
                 }
                 else
                 {
-                    // Bot thì chỉ log thôi, không hiện lên màn hình kẻo lộ bài
+                    yield return new WaitForSeconds(2.0f);
                     Debug.Log($"Bot {player.name} đang tỏ ra nguy hiểm khi nhìn trộm tương lai...");
+                    // Bot đã tính toán xong logic ẩn, không cần chờ thêm
                 }
                 // Lưu ý: See Future không kết thúc lượt, người chơi sẽ tự quyết định làm gì tiếp theo
                 break;
@@ -398,6 +403,8 @@ public class GameManager : MonoBehaviour
     // Coroutine hiển thị 3 lá tương lai
     IEnumerator ShowFutureCardsRoutine(List<DrawPileManager.CardType> cards)
     {
+        yield return new WaitForSeconds(1.0f);
+
         // 1. Khóa nút bấm để người chơi tập trung xem
         if (drawButton != null) drawButton.interactable = false;
         if (playButton != null) playButton.interactable = false;
@@ -423,8 +430,8 @@ public class GameManager : MonoBehaviour
             tempCards.Add(cardObj);
         }
 
-        // 3. Chờ 4 giây
-        yield return new WaitForSeconds(4.0f);
+        // 3. Chờ 5 giây
+        yield return new WaitForSeconds(5.0f);
 
         // 4. Xóa Visual
         foreach (var c in tempCards)
@@ -685,26 +692,32 @@ public class GameManager : MonoBehaviour
         UpdateUIForBot(bot);
 
         // 3. Spawn Visual lá bài bay ra giữa bàn (cho người chơi thấy Bot vừa đánh gì)
-        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);    
+        GameObject cardVisual = Instantiate(GetPrefabByType(cardType), bot.botDisplayUI.handArea.position, Quaternion.identity, CardController.canvasTransform);
+
+        yield return StartCoroutine(MoveToPosition(cardVisual.transform, discardPileTransform.position, 0.4f));
 
         // ... Code Animation bay vào DiscardPile ...
-        yield return new WaitForSeconds(1f); 
         cardVisual.transform.SetParent(discardPileTransform);
         cardVisual.transform.localPosition = Vector3.zero;
         cardVisual.transform.localRotation = Quaternion.identity;
         cardVisual.transform.localScale = Vector3.one;
 
         // 4. Xử lý hiệu ứng bài
-        HandleCardEffect(cardType, bot);
+        yield return StartCoroutine(HandleCardEffect(cardType, bot));
     }
     #endregion
 
     #region HUMAN INPUT
 
-    // Hàm sự kiện của nút đánh bài
-    public void OnPlayCardButtonPress()
+    public void OnPlayCardButtonClicked()
     {
-        if (CardController.selectedCard == null) return;
+        StartCoroutine(OnPlayCardButtonPress());
+    }
+
+    // Hàm sự kiện của nút đánh bài
+    public IEnumerator OnPlayCardButtonPress()
+    {
+        if (CardController.selectedCard == null) yield break;
 
         CardController cardObj = CardController.selectedCard;
         Player currentP = players[currentPlayerIndex];
@@ -737,7 +750,7 @@ public class GameManager : MonoBehaviour
                 turnsRemaining--;
                 CheckTurnStatus();
             }
-            return; // Quan trọng: Return luôn, không chạy logic đánh bài thường bên dưới
+            yield break; // Quan trọng: Return luôn, không chạy logic đánh bài thường bên dưới
         }
 
         // B. NẾU KHÔNG TRÚNG BOOM
@@ -748,12 +761,14 @@ public class GameManager : MonoBehaviour
         // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
         cardObj.PlayCard(discardPileTransform);
 
+        yield return new WaitForSeconds(0.4f);
+
         // 3. Reset trạng thái
         CardController.selectedCard = null; 
         UpdateUIForBot(currentP);
 
         // 4. Xử lý hiệu ứng lá bài
-        HandleCardEffect(cardObj.cardType, currentP);
+        yield return StartCoroutine(HandleCardEffect(cardObj.cardType, currentP));
     }
 
     // Hàm sự kiện của nút rút bài
