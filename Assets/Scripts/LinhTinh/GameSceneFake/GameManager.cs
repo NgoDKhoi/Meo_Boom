@@ -85,6 +85,7 @@ public class GameManager : MonoBehaviour
     public GameObject shuffleEffectPrefab;
     public GameObject seeTheFutureEffectPrefab;
     public GameObject defuseEffectPrefab;
+    public GameObject drawBottomEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -380,6 +381,19 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.DrawBottom:
                 // DrawBottom không có FX riêng mà chỉ gọi DrawCardRoutine
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: DRAW BOTTOM</color>");
+
+                float drawBottomDuration = 1.5f;
+
+                if (drawBottomEffectPrefab != null)
+                {
+                    Vector3 spawnPos = Vector3.zero;
+                    GameObject drawBottomFX = Instantiate(drawBottomEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+                    EffectAnimation fxPlayer = drawBottomFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null) fxPlayer.effectDuration = drawBottomDuration;
+                }
+
+                yield return new WaitForSeconds(drawBottomDuration);
+
                 // Rút bài từ đáy -> Gọi hàm với tham số true
                 // Lưu ý: DrawCardRoutine đã là Coroutine nên dùng 'yield return' để chờ nó xong.
                 yield return StartCoroutine(DrawCardRoutine(fromBottom: true));
@@ -406,8 +420,8 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    yield return new WaitForSeconds(2.0f);
                     Debug.Log($"Bot {player.name} đang tỏ ra nguy hiểm khi nhìn trộm tương lai...");
+                    yield return new WaitForSeconds(2.0f);
                     // Bot đã tính toán xong logic ẩn, không cần chờ thêm
                 }
                 // Lưu ý: See Future không kết thúc lượt, người chơi sẽ tự quyết định làm gì tiếp theo
