@@ -84,6 +84,7 @@ public class GameManager : MonoBehaviour
     public GameObject attackEffectPrefab;
     public GameObject shuffleEffectPrefab;
     public GameObject seeTheFutureEffectPrefab;
+    public GameObject defuseEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -246,6 +247,20 @@ public class GameManager : MonoBehaviour
 
                         // 1. Chờ 3s để người chơi kịp nhìn thấy quả bom
                         yield return new WaitForSeconds(3f);
+
+                        float defuseDuration = 1.0f; // Thời gian FX (đã thiết lập trong EffectAnimation)
+                        if (defuseEffectPrefab != null && pendingBombVisual != null)
+                        {
+                            // Vị trí xuất hiện: Ngay tại vị trí của quả bom đang treo
+                            Vector3 spawnPos = pendingBombVisual.transform.position;
+                            GameObject defuseFX = Instantiate(defuseEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+
+                            EffectAnimation fxPlayer = defuseFX.GetComponent<EffectAnimation>();
+                            if (fxPlayer != null) fxPlayer.effectDuration = defuseDuration;
+
+                            // CHỜ HIỆU ỨNG CHẠY HẾT (1.0 giây)
+                            yield return new WaitForSeconds(defuseDuration);
+                        }
 
                         // 2. Trừ lá Defuse khỏi tay Bot
                         currentP.hand.Remove(DrawPileManager.CardType.Defuse);
@@ -708,7 +723,6 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region HUMAN INPUT
-
     public void OnPlayCardButtonClicked()
     {
         StartCoroutine(OnPlayCardButtonPress());
@@ -732,6 +746,23 @@ public class GameManager : MonoBehaviour
                 // 1. Xóa bài khỏi tay & bay vào Discard Pile
                 ProcessCardData(currentP, cardObj.cardType);
                 cardObj.PlayCard(discardPileTransform);
+
+                // --- 1.5. Đợi lá Defuse bay đi xong (0.4s) ---
+                yield return new WaitForSeconds(0.4f);
+
+                // --- 1.6. GỌI HIỆU ỨNG DEFUSE TẠI ĐÂY ---
+                float defuseDuration = 1.0f; // Thời gian FX (đã thiết lập)
+                if (defuseEffectPrefab != null && pendingBombVisual != null)
+                {
+                    // Vị trí xuất hiện: Ngay tại vị trí của quả bom đang treo
+                    Vector3 spawnPos = pendingBombVisual.transform.position;
+                    GameObject defuseFX = Instantiate(defuseEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+
+                    EffectAnimation fxPlayer = defuseFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null) fxPlayer.effectDuration = defuseDuration;
+
+                    yield return new WaitForSeconds(defuseDuration);
+                }
 
                 // 2. Tắt chế độ nguy hiểm
                 IsDefusing = false;

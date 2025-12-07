@@ -712,6 +712,7 @@ MonoBehaviour:
   attackEffectPrefab: {fileID: 5994458097385215752, guid: ff2957983e872034ebc71c5b523ef406, type: 3}
   shuffleEffectPrefab: {fileID: 247237600805506018, guid: 4f20d10337ed66f4ea22f9ae0ca1d12f, type: 3}
   seeTheFutureEffectPrefab: {fileID: 1984646259280761391, guid: 61fadf2850fc09d468b927db0ac5fab9, type: 3}
+  defuseEffectPrefab: {fileID: 984563606955094092, guid: 07eb62691a9a43547a2f5e1ff619354b, type: 3}
   discardPileCardScale: {x: 1, y: 1, z: 1}
 --- !u!4 &447230397
 Transform:
