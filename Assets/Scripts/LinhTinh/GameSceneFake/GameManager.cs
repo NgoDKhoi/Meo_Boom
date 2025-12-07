@@ -248,7 +248,7 @@ public class GameManager : MonoBehaviour
                         // 1. Chờ 3s để người chơi kịp nhìn thấy quả bom
                         yield return new WaitForSeconds(3f);
 
-                        float defuseDuration = 1.0f; // Thời gian FX (đã thiết lập trong EffectAnimation)
+                        float defuseDuration = 1.6f; // Thời gian FX (đã thiết lập trong EffectAnimation)
                         if (defuseEffectPrefab != null && pendingBombVisual != null)
                         {
                             // Vị trí xuất hiện: Ngay tại vị trí của quả bom đang treo
@@ -751,7 +751,7 @@ public class GameManager : MonoBehaviour
                 yield return new WaitForSeconds(0.4f);
 
                 // --- 1.6. GỌI HIỆU ỨNG DEFUSE TẠI ĐÂY ---
-                float defuseDuration = 1.0f; // Thời gian FX (đã thiết lập)
+                float defuseDuration = 1.6f; // Thời gian FX (đã thiết lập)
                 if (defuseEffectPrefab != null && pendingBombVisual != null)
                 {
                     // Vị trí xuất hiện: Ngay tại vị trí của quả bom đang treo

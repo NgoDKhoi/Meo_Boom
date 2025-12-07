@@ -126,5 +126,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 510355991c41438499009b5bf5fa3bb7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EffectAnimation
-  effectDuration: 1
+  effectDuration: 1.6
   moveSpeed: 5
