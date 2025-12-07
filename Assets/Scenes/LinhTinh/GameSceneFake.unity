@@ -715,6 +715,7 @@ MonoBehaviour:
   defuseEffectPrefab: {fileID: 984563606955094092, guid: 07eb62691a9a43547a2f5e1ff619354b, type: 3}
   drawBottomEffectPrefab: {fileID: 8416661452022423339, guid: 76d472b15a6da7a42b643ec466b6fa79, type: 3}
   skipEffectPrefab: {fileID: 1079388514993842112, guid: 948e300d41ae51242ab1036c2cc263ad, type: 3}
+  explodeMasterEffectPrefab: {fileID: 5705259250422523252, guid: d887658f8241cab40a79e59ac908fdd1, type: 3}
   discardPileCardScale: {x: 1, y: 1, z: 1}
 --- !u!4 &447230397
 Transform:

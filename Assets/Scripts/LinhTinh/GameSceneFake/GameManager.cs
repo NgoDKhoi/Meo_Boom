@@ -87,6 +87,7 @@ public class GameManager : MonoBehaviour
     public GameObject defuseEffectPrefab;
     public GameObject drawBottomEffectPrefab;
     public GameObject skipEffectPrefab;
+    public GameObject explodeMasterEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -288,7 +289,7 @@ public class GameManager : MonoBehaviour
                 {
                     // KHÔNG CÓ DEFUSE -> CHẾT
                     yield return new WaitForSeconds(1f);
-                    HandlePlayerDeath(currentP);
+                    yield return StartCoroutine(HandlePlayerDeathRoutine(currentP));
                 }
                 yield break; // Dừng Coroutine tại đây
             }
@@ -330,7 +331,7 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.Skip:
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SKIP (Giảm 1 lượt rút)</color>");
 
-                float skipDuration = 0.5f; // Thời gian FX
+                float skipDuration = 0.75f; // Thời gian FX
                 
                 // GỌI HIỆU ỨNG SKIP
                 if (skipEffectPrefab != null)
@@ -494,26 +495,42 @@ public class GameManager : MonoBehaviour
 
 
     // Hàm xử lý người chơi bị loại
-    public void HandlePlayerDeath(Player p)
+    public IEnumerator HandlePlayerDeathRoutine(Player p)
     {
-        // 1. Đánh dấu chết
-        p.isDead = true;
-        UpdateUIForBot(p);
+        // THỜI GIAN CỐ ĐỊNH = 1.0s (dây cháy) + 1.5s (nổ) = 2.5s
+        float totalExplodeDuration = 2.5f; // << GIỮ GIÁ TRỊ NÀY
 
-        // 2. Xóa visual bom (nếu có)
+        // 1. GỌI EXPLODE SEQUENCE MASTER
+        if (pendingBombVisual != null && explodeMasterEffectPrefab != null)
+        {
+            Vector3 explosionPos = pendingBombVisual.transform.position;
+
+            // TẠO MASTER FX
+            GameObject explosionFX = Instantiate(explodeMasterEffectPrefab, explosionPos, Quaternion.identity, CardController.canvasTransform);
+
+            // Chờ hiệu ứng nổ hoàn tất (2.5 giây)
+            yield return new WaitForSeconds(totalExplodeDuration);
+        }
+
+        // 2. Xóa visual quả bom đang treo
         if (pendingBombVisual != null) Destroy(pendingBombVisual);
+
+        // 3. Đánh dấu chết và cập nhật UI
+        p.isDead = true;
+        UpdateUIForBot(p); // Hàm này có thể cần được gọi ngay lập tức
 
         Debug.Log($"{p.name} đã bị loại!");
 
-        // 3. KIỂM TRA THẮNG THUA NGAY TẠI ĐÂY
+        // 4. KIỂM TRA THẮNG THUA NGAY TẠI ĐÂY
         if (CheckForWinner())
         {
-            return;
+            // Nếu có người thắng, hàm sẽ return true và StopAllCoroutines (trong CheckForWinner)
+            yield break; // Dừng Coroutine tại đây
         }
 
-        // 4. Nếu game chưa kết thúc, chuyển lượt cho người tiếp theo
+        // 5. Nếu game chưa kết thúc, chuyển lượt cho người tiếp theo
         nextTurnStartingCount = 1;
-        EndTurn();
+        EndTurn(); // Kết thúc lượt (chuyển sang người tiếp theo)
     }
 
     // Hàm kiểm tra xem game đã kết thúc chưa
