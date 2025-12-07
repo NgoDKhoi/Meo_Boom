@@ -86,6 +86,7 @@ public class GameManager : MonoBehaviour
     public GameObject seeTheFutureEffectPrefab;
     public GameObject defuseEffectPrefab;
     public GameObject drawBottomEffectPrefab;
+    public GameObject skipEffectPrefab;
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -328,6 +329,18 @@ public class GameManager : MonoBehaviour
         {
             case DrawPileManager.CardType.Skip:
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: SKIP (Giảm 1 lượt rút)</color>");
+
+                float skipDuration = 0.5f; // Thời gian FX
+                
+                // GỌI HIỆU ỨNG SKIP
+                if (skipEffectPrefab != null)
+                {
+                    Vector3 spawnPos = Vector3.zero; // Vị trí player đánh bài (DrawButton hoặc Hand Bot)
+                    GameObject skipFX = Instantiate(skipEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+                    EffectAnimation fxPlayer = skipFX.GetComponent<EffectAnimation>();
+                    if (fxPlayer != null) fxPlayer.effectDuration = skipDuration;
+                }
+                yield return new WaitForSeconds(skipDuration); // Chờ FX chạy
                 turnsRemaining--;
                 CheckTurnStatus();
                 break;
