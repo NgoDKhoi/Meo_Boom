@@ -240,13 +240,13 @@ public class GameManager : MonoBehaviour
                     {
                         // LOGIC CHO NGƯỜI: Bật chế độ chờ bấm nút
                         IsDefusing = true;
-                        if (turnInfoText != null) turnInfoText.text = "RÚT TRÚNG BOM! HÃY ĐÁNH DEFUSE!";
+                        if (turnInfoText != null) turnInfoText.text = "RÚT TRÚNG BOM!\nHÃY ĐÁNH DEFUSE!";
 
                         if (playButton != null) playButton.interactable = false;
                     }
                     else // LOGIC CHO BOT: Tự động gỡ bom
                     {
-                        if (turnInfoText != null) turnInfoText.text = $"{currentP.name} ĐANG GỠ BOM...";
+                        if (turnInfoText != null) turnInfoText.text = $"{currentP.name}\nĐANG GỠ BOM...";
 
                         // 1. Chờ 3s để người chơi kịp nhìn thấy quả bom
                         yield return new WaitForSeconds(3f);
@@ -452,7 +452,7 @@ public class GameManager : MonoBehaviour
         if (drawButton != null) drawButton.interactable = false;
         if (playButton != null) playButton.interactable = false;
 
-        if (turnInfoText != null) turnInfoText.text = "ĐANG SOI TƯƠNG LAI...";
+        if (turnInfoText != null) turnInfoText.text = "ĐANG SOI\nTƯƠNG LAI...";
 
         // 2. Tạo Visual cho các lá bài
         List<GameObject> tempCards = new List<GameObject>();
@@ -484,8 +484,8 @@ public class GameManager : MonoBehaviour
 
         // 5. Trả lại quyền điều khiển (Mở lại nút)
         Player currentP = players[currentPlayerIndex];
-        string turnDetail = turnsRemaining > 1 ? $" (Phải rút {turnsRemaining} lá)" : "";
-        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}{turnDetail}";
+        string turnDetail = turnsRemaining > 1 ? $" (\nPhải rút {turnsRemaining} lá)" : "";
+        if (turnInfoText != null) turnInfoText.text = $"Lượt của:\n{currentP.name}{turnDetail}";
 
         if (drawButton != null) drawButton.interactable = true;
 
@@ -580,7 +580,7 @@ public class GameManager : MonoBehaviour
         Player currentP = players[currentPlayerIndex];
         if (currentP.isDead) { EndTurn(); return; }
 
-        if (turnInfoText != null) turnInfoText.text = $"Lượt của: {currentP.name}";
+        if (turnInfoText != null) turnInfoText.text = $"Lượt của:\n{currentP.name}";
 
         if (currentP.type == PlayerType.Human)
         {
@@ -602,8 +602,8 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[{currentP.name}] Vẫn còn {turnsRemaining} lượt rút nữa!");
             if (turnInfoText != null)
             {
-                string turnDetail = turnsRemaining > 1 ? $" (Phải rút {turnsRemaining} lá)" : "";
-                turnInfoText.text = $"Lượt của: {currentP.name}{turnDetail}";
+                string turnDetail = turnsRemaining > 1 ? $"\n(Phải rút {turnsRemaining} lá)" : "";
+                turnInfoText.text = $"Lượt của:\n{currentP.name}{turnDetail}";
             }
 
             // Nếu là Người, bật lại nút rút bài (vì nó bị tắt lúc bắt đầu DrawCardRoutine)
