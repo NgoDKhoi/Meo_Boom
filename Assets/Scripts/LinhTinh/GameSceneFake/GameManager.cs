@@ -65,6 +65,7 @@ public class GameManager : MonoBehaviour
     public Button drawButton;              // Nút rút bài
     public Button playButton;              // Nút đánh bài
     public TextMeshProUGUI turnInfoText;   // Thông báo lượt
+    public TextMeshProUGUI drawPileCountText; // Banner hiển thị số lá bài còn lại
 
     [Header("--- UI VICTORY ---")]
     public GameObject victoryPanel;      // Panel_Victory 
@@ -185,6 +186,8 @@ public class GameManager : MonoBehaviour
         // Thêm bom vào
         drawPileManager.AddExplodingKittens();
 
+        UpdateDrawPileCountUI();
+
         // Có thể thêm hiệu ứng trộn bom ở đây (tiếng xào bài chẳng hạn)
         // yield return new WaitForSeconds(1f);
 
@@ -219,6 +222,8 @@ public class GameManager : MonoBehaviour
                 Debug.Log($"{currentP.name} quyết định RÚT BÀI");
                 drawnCard = drawPileManager.DrawCardData(); // Gọi hàm rút thường
             }
+
+            UpdateDrawPileCountUI();
 
             // 2. Xử lý logic Explode (Rút trúng bom)
             if (drawnCard == DrawPileManager.CardType.Explode)
@@ -279,6 +284,8 @@ public class GameManager : MonoBehaviour
                         int randomSlot = Random.Range(0, drawPileManager.GetRemainingCount());
                         drawPileManager.InsertCardToDeck(DrawPileManager.CardType.Explode, randomSlot);
                         Debug.Log($"{currentP.name} đã gỡ bom và nhét ngẫu nhiên vào vị trí: {randomSlot}");
+
+                        UpdateDrawPileCountUI();
 
                         // 6. Kết thúc lượt của Bot
                         turnsRemaining--;
@@ -390,6 +397,7 @@ public class GameManager : MonoBehaviour
                 yield return new WaitForSeconds(shuffleDuration);
 
                 drawPileManager.ShuffleDrawPile(); // Logic xáo bài
+                UpdateDrawPileCountUI();
                 break;
 
             case DrawPileManager.CardType.DrawBottom:
@@ -820,6 +828,8 @@ public class GameManager : MonoBehaviour
 
                 Debug.Log($"Đã gỡ bom thành công! Bom nằm ở vị trí: {randomSlot}");
 
+                UpdateDrawPileCountUI();
+
                 // 4. Update UI & End Turn
                 UpdateUIForBot(currentP);
                 turnsRemaining--;
@@ -856,10 +866,20 @@ public class GameManager : MonoBehaviour
             // Bắt đầu Routine rút bài
             StartCoroutine(DrawCardRoutine());
         }
-    }   
+    }
     #endregion
 
     #region UI LOGIC
+
+    public void UpdateDrawPileCountUI()
+    {
+        if (drawPileCountText != null && drawPileManager != null)
+        {
+            int count = drawPileManager.GetRemainingCount();
+            drawPileCountText.text = $"Bộ bài còn: {count} lá";
+        }
+    }
+
     GameObject GetPrefabByType(DrawPileManager.CardType type)
     {
         switch (type)
