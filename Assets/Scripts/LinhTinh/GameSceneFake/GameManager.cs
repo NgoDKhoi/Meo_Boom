@@ -565,7 +565,7 @@ public class GameManager : MonoBehaviour
                 // DrawBottom không có FX riêng mà chỉ gọi DrawCardRoutine
                 Debug.Log($"<color=cyan>[{player.name}] kích hoạt Effect: DRAW BOTTOM</color>");
 
-                float drawBottomDuration = 1.5f;
+                float drawBottomDuration = 1.0f;
 
                 if (drawBottomEffectPrefab != null)
                 {

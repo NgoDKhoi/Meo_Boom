@@ -1,13 +1,13 @@
 fileFormatVersion: 2
-guid: 138b4ff92153b2a44b2945e895e1c584
+guid: 9a258496b29993d4a9380139158007b6
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5651218229903484337
-    second: lightning 8_0
+      213: -2089573236070193842
+    second: bottom 15_0
   - first:
-      213: -18843711870774800
-    second: lightning 8_1
+      213: -921893421593798209
+    second: bottom 15_1
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -49,7 +49,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -116,13 +116,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: lightning 8_0
+      name: bottom 15_0
       rect:
         serializedVersion: 2
-        x: 45
-        y: 261
-        width: 13
-        height: 54
+        x: 209
+        y: 467
+        width: 296
+        height: 138
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -131,20 +131,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1b5eb95e9092d6e40800000000000000
-      internalID: 5651218229903484337
+      spriteID: e456fdb76385003e0800000000000000
+      internalID: -2089573236070193842
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: lightning 8_1
+      name: bottom 15_1
       rect:
         serializedVersion: 2
-        x: 40
-        y: 1
-        width: 26
-        height: 258
+        x: 456
+        y: 475
+        width: 339
+        height: 183
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -153,8 +153,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0f151bf6ebd0dbff0800000000000000
-      internalID: -18843711870774800
+      spriteID: fb9d12541d6c433f0800000000000000
+      internalID: -921893421593798209
       vertices: []
       indices: 
       edges: []
@@ -173,8 +173,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      lightning 8_0: 5651218229903484337
-      lightning 8_1: -18843711870774800
+      bottom 15_0: -2089573236070193842
+      bottom 15_1: -921893421593798209
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
