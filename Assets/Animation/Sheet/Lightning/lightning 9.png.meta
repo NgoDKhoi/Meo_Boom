@@ -1,16 +1,10 @@
 fileFormatVersion: 2
-guid: c5ad7e345fb1419438ea29e030f27d07
+guid: 707b85eb2649c834bada2996914851f3
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5323529875537914635
-    second: lightning 5_0
-  - first:
-      213: 6028362248763496563
-    second: lightning 5_1
-  - first:
-      213: -5641621846515847617
-    second: lightning 5_2
+      213: 181613724588433671
+    second: lightning 9_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -119,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: lightning 5_0
+      name: lightning 9_0
       rect:
         serializedVersion: 2
-        x: 11
-        y: 4
-        width: 75
-        height: 383
+        x: 41
+        y: 7
+        width: 65
+        height: 185
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -134,52 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b0bed9e673af0e940800000000000000
-      internalID: 5323529875537914635
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: lightning 5_1
-      rect:
-        serializedVersion: 2
-        x: 88
-        y: 45
-        width: 7
-        height: 7
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3785cee868b09a350800000000000000
-      internalID: 6028362248763496563
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: lightning 5_2
-      rect:
-        serializedVersion: 2
-        x: 77
-        y: 22
-        width: 17
-        height: 9
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f3ee65932dee4b1b0800000000000000
-      internalID: -5641621846515847617
+      spriteID: 701ed6468b8358200800000000000000
+      internalID: 181613724588433671
       vertices: []
       indices: 
       edges: []
@@ -198,9 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      lightning 5_0: 5323529875537914635
-      lightning 5_1: 6028362248763496563
-      lightning 5_2: -5641621846515847617
+      lightning 9_0: 181613724588433671
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

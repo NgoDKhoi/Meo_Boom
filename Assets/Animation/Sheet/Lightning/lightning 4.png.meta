@@ -8,9 +8,6 @@ TextureImporter:
   - first:
       213: 8157455886585796891
     second: lightning 4_1
-  - first:
-      213: 3164051429095363240
-    second: lightning 4_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -122,10 +119,10 @@ TextureImporter:
       name: lightning 4_0
       rect:
         serializedVersion: 2
-        x: 56
-        y: 200
-        width: 13
-        height: 37
+        x: 0
+        y: 0
+        width: 89
+        height: 384
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,10 +141,10 @@ TextureImporter:
       name: lightning 4_1
       rect:
         serializedVersion: 2
-        x: 36
-        y: 10
-        width: 65
-        height: 187
+        x: 83
+        y: 28
+        width: 9
+        height: 6
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -158,28 +155,6 @@ TextureImporter:
       bones: []
       spriteID: b199dd6a8ea153170800000000000000
       internalID: 8157455886585796891
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: lightning 4_2
-      rect:
-        serializedVersion: 2
-        x: 90
-        y: 27
-        width: 6
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 8a2db4ac208f8eb20800000000000000
-      internalID: 3164051429095363240
       vertices: []
       indices: 
       edges: []
@@ -200,7 +175,6 @@ TextureImporter:
     nameFileIdTable:
       lightning 4_0: -9109636022183904446
       lightning 4_1: 8157455886585796891
-      lightning 4_2: 3164051429095363240
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

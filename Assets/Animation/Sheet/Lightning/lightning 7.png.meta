@@ -116,10 +116,10 @@ TextureImporter:
       name: lightning 7_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 34
         y: 7
-        width: 65
-        height: 29
+        width: 42
+        height: 358
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
