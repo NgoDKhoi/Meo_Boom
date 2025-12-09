@@ -108,16 +108,59 @@ public class CardController : MonoBehaviour, IPointerDownHandler
         StopAllCoroutines();
         // Gọi hàm di chuyển trong World Space.
         StartCoroutine(MoveAndScaleWorldSpace(screenCenterWorldPos, actualLocalScaleInHand * zoomMultiplier));
+
+        // DỪNG TIMER KHI CHỌN DEFUSE
+        if (GameManager.Instance != null && GameManager.Instance.IsDefusing)
+        {
+            GameManager.Instance.CheckDefuseSelection(this.cardType, true);
+        }
     }
 
     public void Deselect()
     {
+        if (GameManager.Instance != null && GameManager.Instance.IsDefusing)
+        {
+            // Phải kiểm tra lá này có phải Defuse không trước khi gọi
+            if (this.cardType == DrawPileManager.CardType.Defuse)
+            {
+                GameManager.Instance.CheckDefuseSelection(this.cardType, false);
+            }
+        }
+
         isZoomed = false;
         CardController.selectedCard = null;
 
         StopAllCoroutines();
         // BẮT ĐẦU COROUTINE TRẢ VỀ VỚI ANIMATION
         StartCoroutine(MoveBackToHandWorldSpace());
+    }
+
+    // THÊM VÀO CardController.cs
+    public void ForceDeselect()
+    {
+        if (!isZoomed) return;
+
+        Debug.Log($"ForceDeselect: {cardType} bị bỏ chọn do hết giờ");
+
+        isZoomed = false;
+        selectedCard = null;
+
+        // Reset về trạng thái ban đầu
+        StopAllCoroutines();
+
+        // Trả về vị trí cũ
+        if (originalParent != null)
+        {
+            transform.SetParent(originalParent, true);
+            transform.SetSiblingIndex(originalSiblingIndex);
+            transform.localScale = actualLocalScaleInHand;
+
+            LayoutElement le = GetComponent<LayoutElement>();
+            if (le != null) le.ignoreLayout = false;
+        }
+
+        // Reset lại sorting order
+        if (spriteRenderer != null) spriteRenderer.sortingOrder = originalSortingOrder;
     }
 
     // ===================================================
