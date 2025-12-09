@@ -483,26 +483,58 @@ public class GameManager : MonoBehaviour
             case DrawPileManager.CardType.Attack:
                 Debug.Log($"<color=orange>[{player.name}] kích hoạt Effect: ATTACK (Tấn công!)</color>");
 
-                // Logic tính toán và tạo FX giữ nguyên
+                // 1. TÍNH TOÁN SỐ LƯỢT TẤN CÔNG
                 int turnsToPass = (turnsRemaining > 1 ? turnsRemaining : 0) + 2;
                 nextTurnStartingCount = turnsToPass;
-
+                // 2. TÌM NGƯỜI CHƠI TIẾP THEO CÒN SỐNG
                 int nextPlayerIndex = (currentPlayerIndex + 1) % players.Count;
-                Player victim = players[nextPlayerIndex];
+                int startIndex = nextPlayerIndex;
+                Player victim = null;
+
+                do
+                {
+                    victim = players[nextPlayerIndex];
+                    // Nếu tìm thấy người chơi còn sống và không phải là người đánh bài (chính mình)
+                    if (!victim.isDead && nextPlayerIndex != currentPlayerIndex)
+                    {
+                        break; // Tìm thấy nạn nhân!
+                    }
+                    nextPlayerIndex = (nextPlayerIndex + 1) % players.Count;
+                    // Trường hợp khẩn cấp: tất cả người khác đã chết
+                    if (nextPlayerIndex == startIndex)
+                    {
+                        Debug.LogWarning("Không tìm thấy nạn nhân còn sống nào ngoài chính mình!");
+                        victim = null; // Gán lại thành null để bỏ qua Attack
+                        break;
+                    }
+
+                } while (nextPlayerIndex != startIndex);
+
                 float attackDuration = 1.0f; // Thời gian FX
 
-                // 1. KHỞI TẠO HIỆU ỨNG TIA SÉT
-                if (attackEffectPrefab != null)
+                if (victim != null)
                 {
-                    Vector3 spawnPos = victim.GetEffectPosition();
-                    GameObject attackFX = Instantiate(attackEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
-                    EffectAnimation fxPlayer = attackFX.GetComponent<EffectAnimation>();
-                    if (fxPlayer != null) fxPlayer.effectDuration = attackDuration;
+                    // 3. KHỞI TẠO HIỆU ỨNG TIA SÉT (Chuyển đến vị trí của Victim đã tìm được)
+                    if (attackEffectPrefab != null)
+                    {
+                        // Sử dụng GetEffectPosition() của victim đã được tìm thấy
+                        Vector3 spawnPos = victim.GetEffectPosition();
+                        GameObject attackFX = Instantiate(attackEffectPrefab, spawnPos, Quaternion.identity, CardController.canvasTransform);
+                        EffectAnimation fxPlayer = attackFX.GetComponent<EffectAnimation>();
+                        if (fxPlayer != null) fxPlayer.effectDuration = attackDuration;
+                    }
+
+                    yield return new WaitForSeconds(attackDuration);
+
+                    Debug.Log($"--> Người tiếp theo - ({victim.name}) - sẽ phải rút {nextTurnStartingCount} lá!");
+                }
+                else
+                {
+                    // Nếu không tìm thấy nạn nhân (ví dụ: chỉ còn 2 người, và người kia đã chết)
+                    Debug.Log($"Attack không có tác dụng: Không tìm thấy nạn nhân còn sống nào.");
+                    yield return new WaitForSeconds(attackDuration / 2);
                 }
 
-                yield return new WaitForSeconds(attackDuration);
-
-                Debug.Log($"--> Người tiếp theo ({victim.name}) sẽ phải rút {nextTurnStartingCount} lá!");
                 turnsRemaining = 0;
                 isBotThinking = false;
                 CheckTurnStatus();
@@ -1000,8 +1032,8 @@ public class GameManager : MonoBehaviour
 
             if (isTurnActionInProgress)
             {
-                Debug.LogWarning($"{botPlayer.name} bị từ chối: Đang có hành động khác chạy. Đang chờ 1 giây...");
-                yield return new WaitForSeconds(1f);
+                Debug.LogWarning($"{botPlayer.name} bị từ chối: Đang có hành động khác chạy. Đang chờ 2 giây...");
+                yield return new WaitForSeconds(2f);
             }
 
             // 3. Quyết định đánh bài
