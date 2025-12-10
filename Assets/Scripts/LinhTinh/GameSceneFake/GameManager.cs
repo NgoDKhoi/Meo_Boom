@@ -1030,7 +1030,7 @@ public class GameManager : MonoBehaviour
         try
         {
             // 1. Bot suy nghĩ
-            float thinkTime = Random.Range(9.8f, 9.9f); // Giảm thời gian suy nghĩ
+            float thinkTime = Random.Range(1f, 3f); // Giảm thời gian suy nghĩ
             Debug.Log($"{botPlayer.name} đang suy nghĩ trong {thinkTime:F1}s...");
             yield return new WaitForSeconds(thinkTime);
 
