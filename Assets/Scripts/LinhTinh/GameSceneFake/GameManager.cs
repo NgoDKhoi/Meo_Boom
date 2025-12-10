@@ -411,6 +411,10 @@ public class GameManager : MonoBehaviour
             // 5. Kết thúc lượt
             turnsRemaining--;
 
+            // chờ trước khi nhả khóa
+            yield return new WaitForSeconds(0.5f);
+            isTurnActionInProgress = false;
+
             if (turnsRemaining > 0)
             {
                 // Vẫn còn lượt rút (do Attack)
@@ -425,9 +429,6 @@ public class GameManager : MonoBehaviour
         }
         finally
         {
-            // LUÔN ĐẢM BẢO MỞ KHÓA, NGAY CẢ KHI CÓ EXCEPTION
-            isTurnActionInProgress = false;
-
             // Debug log để theo dõi
             Debug.Log($"1 lần rút bài vừa được xử lý, isTurnActionInProgress = {isTurnActionInProgress}");
         }
@@ -1008,9 +1009,19 @@ public class GameManager : MonoBehaviour
         Player botPlayer = players[currentPlayerIndex];
 
         // KIỂM TRA BAN ĐẦU
-        if (currentPlayerIndex != myTurnIndex || botPlayer.isDead || isBotThinking)
+        if (currentPlayerIndex != myTurnIndex)
         {
-            Debug.Log($"BotPlayRoutine: {botPlayer?.name} chưa thể bắt đầu lượt mới ngay (chết/đang suy nghĩ/không phải lượt)");
+            Debug.Log($"{botPlayer.name} không thể bắt đầu lượt vì lượt hiện tại không phải là của nó");
+            yield break;
+        }
+        else if (botPlayer.isDead)
+        {
+            Debug.Log($"{botPlayer.name} không thể bắt đầu lượt vì nó đã chết");
+            yield break;
+        }
+        else if (isBotThinking)
+        {
+            Debug.Log($"{botPlayer.name} không thể hành động vì nó đang suy nghĩ...");
             yield break;
         }
 
@@ -1032,8 +1043,8 @@ public class GameManager : MonoBehaviour
 
             if (isTurnActionInProgress)
             {
-                Debug.LogWarning($"{botPlayer.name} bị từ chối: Đang có hành động khác chạy. Đang chờ 2 giây...");
-                yield return new WaitForSeconds(2f);
+                Debug.LogWarning($"Hành động chủ động của {botPlayer.name} (đánh bài/rút bài thủ công) vừa bị từ chối! Đang có hành động khác diễn ra!");
+                yield break;
             }
 
             // 3. Quyết định đánh bài
@@ -1116,7 +1127,7 @@ public class GameManager : MonoBehaviour
                         }
                         else
                         {
-                            Debug.LogWarning("Bỏ qua DrawCardRoutine vì hành động khác đã khóa (có thể là Timer Timeout).");
+                            Debug.LogWarning($"Đang có hành động khác diễn ra, {botPlayer.name} chưa thể bắt đầu vòng chơi mới");
                         }
                     }
                 }
@@ -1134,7 +1145,7 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning($"{botPlayer.name} bị từ chối rút bài tự nguyện vì đang có hành động khác.");
+                    Debug.LogWarning($"{botPlayer.name} bị từ chối rút bài thủ công vì đang có hành động khác diễn ra!");
                 }
 
                 // rút bài xong mà vẫn còn lượt
