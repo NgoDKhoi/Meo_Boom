@@ -58,7 +58,7 @@ Trò chơi xoay quanh bộ bài chứa những lá "mèo nổ". Các người ch
 ## 📸 Hình Ảnh Demo (Screenshots)
 | Màn hình Đăng nhập (Login) | Giao diện Chơi (Gameplay) |
 | :---: | :---: |
-| <img src="Assets/Sprites/MeoNo_image/MenuLogin.png" width="400"> | <img src="Assets/Sprites/MeoNo_image/Gameplay.jpg" width="400"> |
+| <img src="Assets/Sprites/MeoNo_image/MenuLogin.png" width="400"> | <img src="Assets/Sprites/MeoNo_image/GamePlay.jpg" width="400"> |
 | **Hiệu ứng Xào bài (Shuffle)** | **Hiệu ứng Nổ (Explosion)** |
 | <img src="Assets/Sprites/MeoNo_image/HieuUngShuffle.jpg" width="400"> | <img src="Assets/Sprites/MeoNo_image/HieuUngNo.jpg" width="400"> |
 
