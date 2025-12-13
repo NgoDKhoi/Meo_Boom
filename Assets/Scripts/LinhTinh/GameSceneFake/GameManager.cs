@@ -441,7 +441,7 @@ public class GameManager : MonoBehaviour
     }
 
     // Hàm xóa bài khỏi tay và thêm vào bộ bỏ (chỉ xử lý data)
-    private void ProcessCardData(Player player, DrawPileManager.CardType cardType)
+    public  void ProcessCardData(Player player, DrawPileManager.CardType cardType)
     {
         // 1. Xóa khỏi tay (Data)
         if (player.hand.Contains(cardType))
@@ -1482,7 +1482,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void UpdateUIForBot(Player p)
+    public void UpdateUIForBot(Player p)
     {
         if (p.type == PlayerType.Human)
         {

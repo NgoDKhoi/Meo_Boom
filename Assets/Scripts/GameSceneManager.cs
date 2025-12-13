@@ -85,6 +85,11 @@ public class GameSceneManager : MonoBehaviour
             !string.IsNullOrEmpty(RoomManager.Instance.currentUsername) && RoomManager.Instance.currentUsername != "UserDefault")
         {
             InitializeGameUI(RoomManager.Instance.currentRoomPlayers, RoomManager.Instance.currentUsername);
+            if (RoomManager.Instance.IsHost())
+            {
+                OnlineGameController.Instance.BroadcastFullSnapshot("game_start");
+            }
+
         }
         else
         {
