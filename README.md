@@ -76,4 +76,4 @@ Trò chơi xoay quanh bộ bài chứa những lá "mèo nổ". Các người ch
 4. Nhấn Play để chạy game (Cần chạy Server trước nếu game dùng kiến trúc Client-Server tách biệt). 
 
 
-**Cảm ơn Thầy và các bạn đã quan tâm đến dự án Meo Boom của Nhóm 16!**
+**Cảm ơn Cô và các bạn đã quan tâm đến dự án Meo Boom của Nhóm 16!**
