@@ -17,10 +17,12 @@ public class OnlineGameLogic : MonoBehaviour
     [Header("--- Trạng thái Game ---")]
     public int currentTurnIndex = -1;
     public bool isHost = false;
+    // Biến để tạm dừng chuyển lượt (ví dụ: đang chờ xử lý Bom)
+    public bool isTurnPaused = false;
 
     [Header("--- UI References ---")]
     public TextMeshProUGUI turnInfoText;
-    public Button playCardButton; // Kéo nút đánh bài vào đây
+    public Button playCardButton;
 
     [Header("--- Double Click Settings ---")]
     private float lastClickTime = 0f;
@@ -58,6 +60,7 @@ public class OnlineGameLogic : MonoBehaviour
 
         if (isHost)
         {
+            // Đợi một chút để các Manager khác khởi tạo xong bộ bài
             Invoke("CheckAndInitializeTurn", 2.0f);
         }
     }
@@ -70,56 +73,32 @@ public class OnlineGameLogic : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (Input.GetMouseButtonDown(0))
-        {
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            {
-                PointerEventData eventData = new PointerEventData(EventSystem.current);
-                eventData.position = Input.mousePosition;
-                List<RaycastResult> results = new List<RaycastResult>();
-                EventSystem.current.RaycastAll(eventData, results);
-
-                foreach (var result in results)
-                {
-                    if (result.gameObject.name == "DrawPileDeck")
-                    {
-                        OnDeckClicked();
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    private void OnDeckClicked()
-    {
-        if (!IsMyTurn()) return;
-
-        float timeSinceLastClick = Time.time - lastClickTime;
-        if (timeSinceLastClick <= DOUBLE_CLICK_TIME)
-        {
-            RequestDrawCard();
-        }
-        lastClickTime = Time.time;
-    }
-
-    public void RequestDrawCard()
-    {
-        Dictionary<string, object> action = new Dictionary<string, object>();
-        action["type"] = "DRAW";
-        action["sender"] = RoomManager.Instance.currentUsername;
-        roomRef.Child("actions").Push().SetValueAsync(action);
-    }
-
+    // Lắng nghe trạng thái Game từ Firebase
     private void ListenToGameState()
     {
-        roomRef.Child("gameData").Child("currentTurnIndex").ValueChanged += (s, e) => {
+        // 1. Theo dõi lượt chơi
+        roomRef.Child("gameData/currentTurnIndex").ValueChanged += (s, e) => {
             if (e.Snapshot.Exists && e.Snapshot.Value != null)
             {
-                currentTurnIndex = Convert.ToInt32(e.Snapshot.Value);
-                UpdateTurnUI();
+                int newIdx = Convert.ToInt32(e.Snapshot.Value);
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    currentTurnIndex = newIdx;
+                    // Khi chuyển lượt mới, mặc định mở khóa tạm dừng
+                    isTurnPaused = false;
+                    UpdateTurnUI();
+                });
+            }
+        };
+
+        // 2. Theo dõi biến Pause (nếu muốn đồng bộ trạng thái tạm dừng từ Host)
+        roomRef.Child("gameData/isTurnPaused").ValueChanged += (s, e) => {
+            if (e.Snapshot.Exists)
+            {
+                bool paused = (bool)e.Snapshot.Value;
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    isTurnPaused = paused;
+                    UpdateTurnUI();
+                });
             }
         };
     }
@@ -128,19 +107,50 @@ public class OnlineGameLogic : MonoBehaviour
     {
         roomRef.Child("actions").ChildAdded += (s, e) => {
             if (!e.Snapshot.Exists) return;
-            var actionData = e.Snapshot.Value as Dictionary<string, object>;
-            if (actionData != null && isHost && actionData["type"].ToString() == "DRAW")
+            var data = e.Snapshot.Value as Dictionary<string, object>;
+            if (data == null) return;
+
+            string type = data.ContainsKey("type") ? data["type"].ToString() : "";
+
+            // CHỈ HOST: Xử lý logic chuyển lượt
+            if (isHost && type == "DRAW_CONFIRMED")
             {
-                Host_HandleTurnTransition();
+                string cardType = data.ContainsKey("cardType") ? data["cardType"].ToString() : "";
+
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    // Nếu rút phải Bom, KHÔNG chuyển lượt, chuyển sang trạng thái chờ Defuse
+                    if (cardType == "ExplodingKitten")
+                    {
+                        SetTurnPause(true);
+                        Debug.Log("<color=red>[Logic]</color> Rút phải BOM! Tạm dừng chuyển lượt.");
+                    }
+                    else
+                    {
+                        // Nếu không phải bom và không bị tạm dừng bởi Card Effect khác
+                        if (!isTurnPaused)
+                        {
+                            Host_HandleTurnTransition();
+                        }
+                    }
+                });
             }
         };
     }
 
-    private void Host_HandleTurnTransition()
+    // Hàm Host dùng để thay đổi trạng thái Pause trên Firebase
+    public void SetTurnPause(bool pause)
     {
         if (!isHost) return;
+        roomRef.Child("gameData/isTurnPaused").SetValueAsync(pause);
+    }
+
+    private void Host_HandleTurnTransition()
+    {
+        if (!isHost || isTurnPaused) return;
+
         int totalPlayers = RoomManager.Instance.currentRoomPlayers.Count;
         int nextTurn = (currentTurnIndex + 1) % totalPlayers;
+
         roomRef.Child("gameData").Child("currentTurnIndex").SetValueAsync(nextTurn);
     }
 
@@ -153,10 +163,16 @@ public class OnlineGameLogic : MonoBehaviour
         bool isMe = (activePlayer == RoomManager.Instance.currentUsername);
 
         if (turnInfoText != null)
-            turnInfoText.text = isMe ? "<color=yellow>LƯỢT CỦA BẠN</color>" : $"Lượt của: {activePlayer}";
+        {
+            if (isTurnPaused)
+                turnInfoText.text = isMe ? "<color=red>BẠN ĐANG GỠ BOM!</color>" : $"<color=red>{activePlayer} đang gặp Bom!</color>";
+            else
+                turnInfoText.text = isMe ? "<color=yellow>LƯỢT CỦA BẠN</color>" : $"Lượt của: {activePlayer}";
+        }
 
-        // Chỉ bật nút khi đến lượt VÀ đã chọn bài (logic này bổ sung ở handler nút)
-        if (playCardButton != null) playCardButton.interactable = isMe && OnlineCardController.SelectedCard != null;
+        // Cập nhật trạng thái nút đánh bài
+        if (playCardButton != null)
+            playCardButton.interactable = isMe && OnlineCardController.SelectedCard != null;
     }
 
     public bool IsMyTurn()
