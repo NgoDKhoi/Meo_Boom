@@ -3,12 +3,14 @@ using UnityEngine;
 
 public class DrawPileManager : MonoBehaviour
 {
+    public static DrawPileManager Instance;
+
     // --- KHAI BÁO ENUM (Giữ lại ở đây để các class khác dùng chung) ---
-    public enum CardType { None, Defuse, Explode, Skip, Attack, Shuffle, DrawBottom,  SeeFuture }
+    public enum CardType { None, Defuse, Explode, Skip, Attack, Shuffle, DrawBottom, SeeFuture }
 
     [Header("--- DATA ---")]
-    private List<CardType> drawPile = new List<CardType>(); // chồng bài rút
-    private List<CardType> discardPile = new List<CardType>(); // chồng bài đã đánh
+    [SerializeField] private List<CardType> drawPile = new List<CardType>(); // chồng bài rút
+    [SerializeField] private List<CardType> discardPile = new List<CardType>(); // chồng bài đã đánh
 
     [Header("--- CONFIG CARD COUNT---")]
     // Các lá nãy sẽ được cấu hình ở inspector của DrawPileManager
@@ -20,11 +22,15 @@ public class DrawPileManager : MonoBehaviour
     public int drawBottomCardCount;
     public int seeFutureCardCount;
 
+    void Awake()
+    {
+        if (Instance == null) Instance = this;
+    }
 
     // Khởi tạo bộ bài không có BOOM
     public void PrepareSafeDeck(int playerCount)
     {
-        drawPile.Clear(); 
+        drawPile.Clear();
         discardPile.Clear();
 
         // Thêm lá chức năng
@@ -59,7 +65,7 @@ public class DrawPileManager : MonoBehaviour
 
     // Hàm nhét bài và vào vị trí cụ thể
     public void InsertCardToDeck(CardType card, int indexFromTop)
-    {      
+    {
         int index = Mathf.Clamp(indexFromTop, 0, drawPile.Count); // Kiểm tra index hợp lệ để tránh lỗi
         drawPile.Insert(index, card);
     }
@@ -77,10 +83,10 @@ public class DrawPileManager : MonoBehaviour
         Debug.Log("Đã xào bài");
     }
 
-    // Hàm rút bài trả về giá trị thẻ
+    // Hàm rút bài trả về giá trị thẻ (OnlineActionHandler sẽ gọi hàm này)
     public CardType DrawCardData()
     {
-        if (drawPile.Count <= 0) return CardType.Skip; // Hết bài thì trả về rác
+        if (drawPile.Count <= 0) return CardType.None;
 
         CardType c = drawPile[0];
         drawPile.RemoveAt(0);
@@ -91,7 +97,7 @@ public class DrawPileManager : MonoBehaviour
     // Hàm rút bài từ đáy (Draw Bottom)
     public CardType DrawBottomCardData()
     {
-        if (drawPile.Count <= 0) return CardType.Skip;
+        if (drawPile.Count <= 0) return CardType.None;
 
         // Lấy lá cuối cùng (đáy)
         int lastIndex = drawPile.Count - 1;

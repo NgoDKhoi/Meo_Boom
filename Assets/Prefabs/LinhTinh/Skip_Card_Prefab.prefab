@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3138646565446492331}
   - component: {fileID: 6276409349762027463}
   - component: {fileID: 3094896159492683703}
+  - component: {fileID: 2214375740417083576}
   m_Layer: 0
   m_Name: Skip_Card_Prefab
   m_TagString: Untagged
@@ -88,8 +89,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc954c2dce0d9d54abd7f55b944bf67e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Card_Controller
-  cardType: 2
+  cardType: 3
   zoomMultiplier: 2.5
   moveSpeed: 4
   sortingOrderWhenSelected: 100
   sortingOrderWhenPlayed: 10
+--- !u!114 &2214375740417083576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2942013063981567608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9be655a0b391614ebe69096efbebed6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OnlineCardController
+  cardType: 3
