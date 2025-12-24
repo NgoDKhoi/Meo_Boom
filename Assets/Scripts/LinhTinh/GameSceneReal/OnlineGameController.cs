@@ -11,37 +11,75 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
     public float raiseAmount = 40f;
     public float zoomScale = 1.2f;
 
+    [Header("--- UI Feedback ---")]
+    public Image cardImage; // Kéo Image của lá bài vào đây
+    public Color lockedColor = new Color(0.5f, 0.5f, 0.5f, 0.8f); // Màu tối khi bị khóa
+
     private Vector3 startPosition;
     private Vector3 startScale;
     private bool isSelected = false;
     private bool isZoomed = false;
-    private bool hasStoredOriginalPos = false; // Cờ kiểm tra đã lưu vị trí chuẩn chưa
+    private bool hasStoredOriginalPos = false;
 
-    // Hỗ trợ Double Click
     private float lastClickTime = 0f;
     private const float doubleClickInterval = 0.3f;
 
     void Awake()
     {
         startScale = transform.localScale;
+        if (cardImage == null) cardImage = GetComponent<Image>();
     }
 
-    // Quan trọng: Khi lá bài được kích hoạt lại (nếu dùng pooling)
+    void Update()
+    {
+        // Tự động cập nhật trạng thái hiển thị dựa trên logic game
+        UpdateCardVisualState();
+    }
+
     void OnEnable()
     {
         ResetCardUI();
     }
 
+    private void UpdateCardVisualState()
+    {
+        if (OnlineGameActionManager.Instance == null) return;
+
+        // Nếu ĐANG DÍNH BOM mà lá này KHÔNG PHẢI DEFUSE
+        if (OnlineGameActionManager.Instance.isWaitingForDefuse)
+        {
+            if (cardType != DrawPileManager.CardType.Defuse)
+            {
+                cardImage.color = lockedColor;
+            }
+            else
+            {
+                // Lá Defuse thì làm nổi bật lên
+                cardImage.color = Color.white;
+            }
+        }
+        else
+        {
+            // Trạng thái bình thường
+            cardImage.color = Color.white;
+        }
+    }
+
     public void OnPointerClick(PointerEventData eventData)
     {
-        // 1. Luôn đảm bảo đã lưu vị trí gốc chuẩn từ Layout ngay khi click
-        if (!hasStoredOriginalPos)
+        // KHÓA CLICK: Nếu đang dính bom mà click vào bài thường thì không xử lý
+        if (OnlineGameActionManager.Instance != null && OnlineGameActionManager.Instance.isWaitingForDefuse)
         {
-            StorePosition();
+            if (cardType != DrawPileManager.CardType.Defuse)
+            {
+                Debug.Log("Lá bài này đang bị khóa!");
+                return;
+            }
         }
 
-        float timeSinceLastClick = Time.time - lastClickTime;
+        if (!hasStoredOriginalPos) StorePosition();
 
+        float timeSinceLastClick = Time.time - lastClickTime;
         if (timeSinceLastClick <= doubleClickInterval)
         {
             ToggleZoom();
@@ -77,15 +115,14 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
             SelectCard();
         }
 
-        // Cập nhật trạng thái nút bấm đánh bài
         if (OnlineGameLogic.Instance != null)
             OnlineGameLogic.Instance.UpdateTurnUI();
+        OnlineGameLogic.Instance.OnCardSelectionChanged();
     }
 
     private void SelectCard()
     {
         isSelected = true;
-        // Đặt vị trí nhích lên tuyệt đối dựa trên vị trí gốc đã lưu
         transform.localPosition = startPosition + new Vector3(0, raiseAmount, 0);
     }
 
@@ -102,7 +139,7 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
         if (isZoomed)
         {
             transform.localScale = startScale * zoomScale;
-            transform.SetAsLastSibling(); // Đưa lên trên cùng để xem
+            transform.SetAsLastSibling();
         }
         else
         {
@@ -120,7 +157,8 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
     {
         isSelected = false;
         isZoomed = false;
-        hasStoredOriginalPos = false; // Reset cờ để lấy lại vị trí mới nếu cần
+        hasStoredOriginalPos = false;
         transform.localScale = startScale;
+        if (cardImage != null) cardImage.color = Color.white;
     }
 }

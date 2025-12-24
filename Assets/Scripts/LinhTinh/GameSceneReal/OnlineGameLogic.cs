@@ -3,9 +3,9 @@ using Firebase.Database;
 using Firebase.Extensions;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 using TMPro;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
 public class OnlineGameLogic : MonoBehaviour
 {
@@ -17,16 +17,15 @@ public class OnlineGameLogic : MonoBehaviour
     [Header("--- Trạng thái Game ---")]
     public int currentTurnIndex = -1;
     public bool isHost = false;
-    // Biến để tạm dừng chuyển lượt (ví dụ: đang chờ xử lý Bom)
-    public bool isTurnPaused = false;
+    public bool isWaitingForDefuse = false;
+    public bool isGameOver = false;
+
+    // Danh sách lưu trữ trạng thái sống sót của từng người chơi
+    public Dictionary<string, bool> playerLifeStatus = new Dictionary<string, bool>();
 
     [Header("--- UI References ---")]
     public TextMeshProUGUI turnInfoText;
     public Button playCardButton;
-
-    [Header("--- Double Click Settings ---")]
-    private float lastClickTime = 0f;
-    private const float DOUBLE_CLICK_TIME = 0.35f;
 
     void Awake()
     {
@@ -53,27 +52,15 @@ public class OnlineGameLogic : MonoBehaviour
         if (players != null && players.Count > 0)
         {
             isHost = (RoomManager.Instance.currentUsername == players[0]);
+            // Khởi tạo trạng thái ban đầu: tất cả đều sống
+            foreach (var p in players) playerLifeStatus[p] = true;
         }
 
         ListenToGameState();
-        ListenToActions();
-
-        if (isHost)
-        {
-            // Đợi một chút để các Manager khác khởi tạo xong bộ bài
-            Invoke("CheckAndInitializeTurn", 2.0f);
-        }
+        ListenToPlayersLife();
+        ListenToWinner();
     }
 
-    private void CheckAndInitializeTurn()
-    {
-        if (currentTurnIndex == -1)
-        {
-            roomRef.Child("gameData").Child("currentTurnIndex").SetValueAsync(0);
-        }
-    }
-
-    // Lắng nghe trạng thái Game từ Firebase
     private void ListenToGameState()
     {
         // 1. Theo dõi lượt chơi
@@ -83,102 +70,176 @@ public class OnlineGameLogic : MonoBehaviour
                 int newIdx = Convert.ToInt32(e.Snapshot.Value);
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
                     currentTurnIndex = newIdx;
-                    // Khi chuyển lượt mới, mặc định mở khóa tạm dừng
-                    isTurnPaused = false;
                     UpdateTurnUI();
                 });
             }
         };
 
-        // 2. Theo dõi biến Pause (nếu muốn đồng bộ trạng thái tạm dừng từ Host)
-        roomRef.Child("gameData/isTurnPaused").ValueChanged += (s, e) => {
-            if (e.Snapshot.Exists)
+        // 2. Theo dõi biến isWaitingForDefuse
+        roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
+            bool waiting = false;
+            if (e.Snapshot.Exists && e.Snapshot.Value != null)
             {
-                bool paused = (bool)e.Snapshot.Value;
-                UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    isTurnPaused = paused;
-                    UpdateTurnUI();
-                });
+                waiting = (bool)e.Snapshot.Value;
             }
+
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                isWaitingForDefuse = waiting;
+                UpdateTurnUI();
+            });
         };
     }
 
-    private void ListenToActions()
+    private void ListenToPlayersLife()
     {
-        roomRef.Child("actions").ChildAdded += (s, e) => {
-            if (!e.Snapshot.Exists) return;
-            var data = e.Snapshot.Value as Dictionary<string, object>;
-            if (data == null) return;
+        // Lắng nghe thay đổi trạng thái isDead của từng người chơi
+        roomRef.Child("players").ChildAdded += HandlePlayerLifeChange;
+        roomRef.Child("players").ChildChanged += HandlePlayerLifeChange;
+    }
 
-            string type = data.ContainsKey("type") ? data["type"].ToString() : "";
-
-            // CHỈ HOST: Xử lý logic chuyển lượt
-            if (isHost && type == "DRAW_CONFIRMED")
+    private void HandlePlayerLifeChange(object sender, ChildChangedEventArgs e)
+    {
+        if (e.Snapshot.Exists)
+        {
+            string pName = e.Snapshot.Key;
+            bool isDead = false;
+            if (e.Snapshot.HasChild("isDead"))
             {
-                string cardType = data.ContainsKey("cardType") ? data["cardType"].ToString() : "";
+                isDead = (bool)e.Snapshot.Child("isDead").Value;
+            }
 
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                playerLifeStatus[pName] = !isDead; // Sống = !isDead
+                UpdateTurnUI();
+
+                // Nếu mình vừa bị đánh dấu là Dead
+                if (isDead && pName == RoomManager.Instance.currentUsername)
+                {
+                    Debug.Log("<color=red>BẠN ĐÃ BỊ LOẠI KHỎI CUỘC CHƠI!</color>");
+                }
+
+                // Kiểm tra điều kiện thắng (Chỉ Host thực thi để tránh ghi đè dữ liệu)
+                if (isHost && !isGameOver)
+                {
+                    CheckWinCondition();
+                }
+            });
+        }
+    }
+
+    private void CheckWinCondition()
+    {
+        // Lọc danh sách những người còn sống
+        var survivors = playerLifeStatus.Where(p => p.Value == true).Select(p => p.Key).ToList();
+
+        // Nếu chỉ còn đúng 1 người sống sót (và ván đấu có từ 2 người trở lên)
+        if (survivors.Count == 1 && playerLifeStatus.Count >= 2)
+        {
+            string winnerName = survivors[0];
+            // Cập nhật người thắng lên Firebase
+            roomRef.Child("gameData/winner").SetValueAsync(winnerName);
+        }
+    }
+
+    private void ListenToWinner()
+    {
+        roomRef.Child("gameData/winner").ValueChanged += (s, e) => {
+            if (e.Snapshot.Exists && e.Snapshot.Value != null)
+            {
+                string winner = e.Snapshot.Value.ToString();
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    // Nếu rút phải Bom, KHÔNG chuyển lượt, chuyển sang trạng thái chờ Defuse
-                    if (cardType == "ExplodingKitten")
+                    isGameOver = true;
+                    if (turnInfoText != null)
                     {
-                        SetTurnPause(true);
-                        Debug.Log("<color=red>[Logic]</color> Rút phải BOM! Tạm dừng chuyển lượt.");
+                        turnInfoText.text = (winner == RoomManager.Instance.currentUsername) ?
+                            "<color=yellow>★ BẠN LÀ NGƯỜI CHIẾN THẮNG! ★</color>" :
+                            $"<color=green>{winner} đã chiến thắng!</color>";
                     }
-                    else
-                    {
-                        // Nếu không phải bom và không bị tạm dừng bởi Card Effect khác
-                        if (!isTurnPaused)
-                        {
-                            Host_HandleTurnTransition();
-                        }
-                    }
+                    if (playCardButton != null) playCardButton.interactable = false;
                 });
             }
         };
-    }
-
-    // Hàm Host dùng để thay đổi trạng thái Pause trên Firebase
-    public void SetTurnPause(bool pause)
-    {
-        if (!isHost) return;
-        roomRef.Child("gameData/isTurnPaused").SetValueAsync(pause);
-    }
-
-    private void Host_HandleTurnTransition()
-    {
-        if (!isHost || isTurnPaused) return;
-
-        int totalPlayers = RoomManager.Instance.currentRoomPlayers.Count;
-        int nextTurn = (currentTurnIndex + 1) % totalPlayers;
-
-        roomRef.Child("gameData").Child("currentTurnIndex").SetValueAsync(nextTurn);
     }
 
     public void UpdateTurnUI()
     {
+        if (isGameOver) return;
         if (RoomManager.Instance == null || RoomManager.Instance.currentRoomPlayers == null) return;
         if (currentTurnIndex < 0 || currentTurnIndex >= RoomManager.Instance.currentRoomPlayers.Count) return;
 
         string activePlayer = RoomManager.Instance.currentRoomPlayers[currentTurnIndex];
-        bool isMe = (activePlayer == RoomManager.Instance.currentUsername);
+        string myName = RoomManager.Instance.currentUsername;
+        bool isMe = (activePlayer == myName);
+
+        // Kiểm tra xem người chơi hiện tại còn sống không
+        bool isActivePlayerAlive = playerLifeStatus.ContainsKey(activePlayer) ? playerLifeStatus[activePlayer] : true;
 
         if (turnInfoText != null)
         {
-            if (isTurnPaused)
-                turnInfoText.text = isMe ? "<color=red>BẠN ĐANG GỠ BOM!</color>" : $"<color=red>{activePlayer} đang gặp Bom!</color>";
+            if (!isActivePlayerAlive)
+            {
+                turnInfoText.text = $"<color=red>{activePlayer} đã bay màu.</color>";
+            }
+            else if (isWaitingForDefuse)
+            {
+                turnInfoText.text = isMe ?
+                    "<color=red>⚠ BẠN DÍNH BOM! ⚠</color>" :
+                    $"<color=orange>{activePlayer} đang gỡ bom...</color>";
+            }
             else
-                turnInfoText.text = isMe ? "<color=yellow>LƯỢT CỦA BẠN</color>" : $"Lượt của: {activePlayer}";
+            {
+                turnInfoText.text = isMe ?
+                    "<color=yellow>LƯỢT CỦA BẠN</color>" :
+                    $"Lượt của: {activePlayer}";
+            }
         }
 
-        // Cập nhật trạng thái nút đánh bài
+        // Cập nhật nút Play
         if (playCardButton != null)
-            playCardButton.interactable = isMe && OnlineCardController.SelectedCard != null;
+        {
+            // Chỉ tương tác nếu là lượt mình VÀ mình còn sống
+            bool amIAlive = playerLifeStatus.ContainsKey(myName) ? playerLifeStatus[myName] : true;
+
+            if (!isMe || !amIAlive)
+            {
+                playCardButton.interactable = false;
+            }
+            else
+            {
+                var selected = OnlineCardController.SelectedCard;
+                if (selected == null)
+                {
+                    playCardButton.interactable = false;
+                }
+                else
+                {
+                    if (isWaitingForDefuse)
+                    {
+                        playCardButton.interactable = (selected.cardType == DrawPileManager.CardType.Defuse);
+                    }
+                    else
+                    {
+                        playCardButton.interactable = true;
+                    }
+                }
+            }
+        }
     }
 
     public bool IsMyTurn()
     {
+        if (isGameOver) return false;
         if (RoomManager.Instance == null || RoomManager.Instance.currentRoomPlayers == null) return false;
         if (currentTurnIndex < 0 || currentTurnIndex >= RoomManager.Instance.currentRoomPlayers.Count) return false;
-        return RoomManager.Instance.currentUsername == RoomManager.Instance.currentRoomPlayers[currentTurnIndex];
+
+        string activePlayer = RoomManager.Instance.currentRoomPlayers[currentTurnIndex];
+        bool amIAlive = playerLifeStatus.ContainsKey(RoomManager.Instance.currentUsername) ? playerLifeStatus[RoomManager.Instance.currentUsername] : true;
+
+        return (RoomManager.Instance.currentUsername == activePlayer) && amIAlive;
+    }
+
+    public void OnCardSelectionChanged()
+    {
+        UpdateTurnUI();
     }
 }
