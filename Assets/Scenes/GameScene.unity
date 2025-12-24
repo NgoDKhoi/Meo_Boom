@@ -154,8 +154,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -695.81, y: -5.235}
-  m_SizeDelta: {x: 401.95, y: 188.38}
+  m_AnchoredPosition: {x: -683.32, y: -17.72}
+  m_SizeDelta: {x: 426.92, y: 213.35}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &87667823
 MonoBehaviour:
@@ -487,8 +487,10 @@ MonoBehaviour:
   - {fileID: 926943476}
   - {fileID: 1423186661}
   cardsPerPlayer: 4
+  firebaseResponseTimeout: 3.5
   currentTurnIndex: 0
   isHost: 1
+  isWaitingForDefuse: 0
   isWaitingForFirebase: 0
 --- !u!4 &543090224
 Transform:
@@ -538,7 +540,9 @@ MonoBehaviour:
     cardSprite: {fileID: -6935565481873381701, guid: 631732284672d8f4fa36ceb89f38c9eb, type: 3}
   - type: 3
     cardSprite: {fileID: -4358472242703741127, guid: 538537c3ee51d67439fb2887713fe2bf, type: 3}
+  bombTimerText: {fileID: 0}
   turnsToDraw: 1
+  isWaitingForDefuse: 0
 --- !u!1 &558954581
 GameObject:
   m_ObjectHideFlags: 0
@@ -750,6 +754,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 740361016}
   m_CullTransparentMesh: 1
+--- !u!1 &749003078
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 749003080}
+  - component: {fileID: 749003079}
+  m_Layer: 0
+  m_Name: UnityMainThreadDispatcher
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &749003079
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 749003078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 278cbfd2e675c4446abecc0323d021b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnityMainThreadDispatcher
+--- !u!4 &749003080
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 749003078}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &918063888
 GameObject:
   m_ObjectHideFlags: 0
@@ -1273,7 +1321,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OnlineGameLogic
   currentTurnIndex: 0
   isHost: 1
-  isTurnPaused: 0
+  isWaitingForDefuse: 0
+  isGameOver: 0
   turnInfoText: {fileID: 1735623785}
   playCardButton: {fileID: 2123509525}
 --- !u!4 &1273632535
@@ -1324,8 +1373,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 647, y: 279}
-  m_SizeDelta: {x: 521.17, y: 187.41}
+  m_AnchoredPosition: {x: 673.21, y: 284.69}
+  m_SizeDelta: {x: 573.59, y: 198.79}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1307797776
 MonoBehaviour:
@@ -1386,8 +1435,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -638.18, y: 284.69}
-  m_SizeDelta: {x: 517.2, y: 198.8}
+  m_AnchoredPosition: {x: -669.79, y: 284.69}
+  m_SizeDelta: {x: 580.42, y: 198.8}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1423186662
 MonoBehaviour:
@@ -1709,8 +1758,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 16.570013, y: -10.660005}
-  m_SizeDelta: {x: 368.81, y: 167.06}
+  m_AnchoredPosition: {x: -0.000013351, y: 1.74}
+  m_SizeDelta: {x: 368.81, y: 174.19}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1743826565
 GameObject:
@@ -2178,3 +2227,4 @@ SceneRoots:
   - {fileID: 543090224}
   - {fileID: 399223238}
   - {fileID: 1744599680}
+  - {fileID: 749003080}

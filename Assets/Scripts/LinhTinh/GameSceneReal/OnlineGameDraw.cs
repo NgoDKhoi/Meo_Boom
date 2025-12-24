@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System;
 using TMPro;
 using UnityEngine.EventSystems;
+using System.Collections;
 
 public class OnlineDrawManager : MonoBehaviour
 {
@@ -22,14 +23,17 @@ public class OnlineDrawManager : MonoBehaviour
 
     [Header("--- Game Config ---")]
     public int cardsPerPlayer = 4;
+    public float firebaseResponseTimeout = 3.5f; // Thời gian tối đa chờ Firebase phản hồi
 
     [Header("--- Game State ---")]
     public int currentTurnIndex = 0;
     public bool isHost = false;
+    public bool isWaitingForDefuse = false;
     [HideInInspector] public bool isWaitingForFirebase = false;
 
     private float lastClickTime = 0f;
     private const float DOUBLE_CLICK_THRESHOLD = 0.3f;
+    private Coroutine timeoutCoroutine;
 
     void Awake() => Instance = this;
 
@@ -38,18 +42,13 @@ public class OnlineDrawManager : MonoBehaviour
         StartCoroutine(InitializeFirebaseConnection());
     }
 
-    // ================================================================
-    // HÀM BỔ SUNG ĐỂ CARDCONTROLLER KHÔNG BỊ LỖI
-    // ================================================================
     public bool IsMyTurn()
     {
-        // Hỏi OnlineGameLogic xem có đúng lượt của mình không
         if (OnlineGameLogic.Instance != null)
         {
             return OnlineGameLogic.Instance.IsMyTurn();
         }
 
-        // Fallback: Nếu không có Logic Manager, kiểm tra dựa trên TurnIndex đơn giản
         if (RoomManager.Instance != null && RoomManager.Instance.currentRoomPlayers != null)
         {
             string currentTurnPlayer = RoomManager.Instance.currentRoomPlayers[currentTurnIndex % RoomManager.Instance.currentRoomPlayers.Count];
@@ -59,7 +58,7 @@ public class OnlineDrawManager : MonoBehaviour
         return false;
     }
 
-    private System.Collections.IEnumerator InitializeFirebaseConnection()
+    private IEnumerator InitializeFirebaseConnection()
     {
         while (RoomManager.Instance == null || string.IsNullOrEmpty(RoomManager.Instance.currentRoomID))
             yield return new WaitForSeconds(0.5f);
@@ -73,30 +72,24 @@ public class OnlineDrawManager : MonoBehaviour
             isHost = (RoomManager.Instance.currentUsername == players[0]);
         }
 
-        // CHỈ HOST: Thực hiện chuỗi khởi tạo bài đầu trận (Chia bài an toàn)
         if (isHost && DrawPileManager.Instance != null)
         {
             StartCoroutine(HostStartGameSequence(players));
         }
 
         ListenToGameState();
-        // QUAN TRỌNG: Lắng nghe các lệnh hiển thị để tự động Spawn bài cho mình và đối thủ
         ListenForVisualActions();
     }
 
-    private System.Collections.IEnumerator HostStartGameSequence(List<string> players)
+    private IEnumerator HostStartGameSequence(List<string> players)
     {
-        // 1. Lọc sạch bom khỏi Deck để chia bài an toàn ban đầu
         DrawPileManager.Instance.PrepareSafeDeck(players.Count);
 
-        // 2. Chia bài đầu trận cho từng người
         foreach (string playerName in players)
         {
-            // Tặng 1 lá Defuse cố định cho mỗi người
             SendInitialConfirmedCard(playerName, DrawPileManager.CardType.Defuse.ToString());
             yield return new WaitForSeconds(0.2f);
 
-            // Chia thêm số lượng bài ngẫu nhiên theo cấu hình (chắc chắn không có bom)
             for (int i = 0; i < cardsPerPlayer; i++)
             {
                 DrawPileManager.CardType randomCard = DrawPileManager.Instance.DrawCardData();
@@ -105,15 +98,12 @@ public class OnlineDrawManager : MonoBehaviour
             }
         }
 
-        // 3. Sau khi chia xong, mới thêm các lá Bom (Exploding Kittens) vào bộ bài
         DrawPileManager.Instance.AddExplodingKittens();
-
-        // 4. Đồng bộ bộ bài chính thức lên Firebase và đặt lượt đầu tiên
         UpdateDeckToFirebaseFromManager();
         roomRef.Child("gameData/currentTurnIndex").SetValueAsync(0);
+        roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
     }
 
-    // Hàm bổ trợ gửi lệnh xác nhận bài trực tiếp vào node actions (Dùng cho cả lúc chia bài và rút bài)
     private void SendInitialConfirmedCard(string receiver, string cardName)
     {
         Dictionary<string, object> result = new Dictionary<string, object>();
@@ -123,7 +113,6 @@ public class OnlineDrawManager : MonoBehaviour
         roomRef.Child("actions").Push().SetValueAsync(result);
     }
 
-    // Lắng nghe node 'actions' để thực hiện hiển thị bài (Visuals Only)
     private void ListenForVisualActions()
     {
         roomRef.Child("actions").ChildAdded += (s, e) => {
@@ -133,27 +122,55 @@ public class OnlineDrawManager : MonoBehaviour
 
             string type = data.ContainsKey("type") ? data["type"].ToString() : "";
 
-            if (type == "DRAW_CONFIRMED")
-            {
-                string target = data.ContainsKey("target") ? data["target"].ToString() : "";
-                string cardName = data.ContainsKey("cardType") ? data["cardType"].ToString() : "";
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (type == "DRAW_CONFIRMED")
+                {
+                    string target = data.ContainsKey("target") ? data["target"].ToString() : "";
+                    string cardName = data.ContainsKey("cardType") ? data["cardType"].ToString() : "";
 
-                // Thực thi trên Main Thread của Unity
-                UnityMainThreadDispatcher.Instance().Enqueue(() => {
                     if (target == RoomManager.Instance.currentUsername)
                     {
-                        // Nếu là bài của mình: Spawn lá bài thật
-                        isWaitingForFirebase = false;
+                        // Thành công: Hủy timeout và mở khóa
+                        StopWaitingFirebase();
                         SpawnCardToHand(cardName);
                     }
                     else if (!string.IsNullOrEmpty(target))
                     {
-                        // Nếu là bài của đối thủ: Spawn mặt sau lá bài (Card Back)
                         SpawnCardBackForOpponent(target);
                     }
-                });
-            }
+                }
+                else if (type == "BOMB_TRAPPED")
+                {
+                    if (data.ContainsKey("target") && data["target"].ToString() == RoomManager.Instance.currentUsername)
+                    {
+                        // Dính bom: Hủy timeout và mở khóa để xử lý gỡ bom
+                        StopWaitingFirebase();
+                        Debug.Log("Đã dính bom, mở khóa trạng thái chờ Firebase.");
+                    }
+                }
+            });
         };
+    }
+
+    private void StopWaitingFirebase()
+    {
+        isWaitingForFirebase = false;
+        if (timeoutCoroutine != null)
+        {
+            StopCoroutine(timeoutCoroutine);
+            timeoutCoroutine = null;
+        }
+    }
+
+    private IEnumerator StartFirebaseTimeout()
+    {
+        yield return new WaitForSeconds(firebaseResponseTimeout);
+        if (isWaitingForFirebase)
+        {
+            Debug.LogWarning("Firebase Timeout! Tự động giải phóng trạng thái chờ rút bài.");
+            isWaitingForFirebase = false;
+        }
+        timeoutCoroutine = null;
     }
 
     public void UpdateDeckToFirebaseFromManager()
@@ -165,6 +182,25 @@ public class OnlineDrawManager : MonoBehaviour
         foreach (var card in currentDeck) deckStr.Add(card.ToString());
 
         roomRef.Child("gameData/drawPile").SetValueAsync(deckStr);
+    }
+
+    public void Host_InsertBombToFirebaseDeck()
+    {
+        if (!isHost) return;
+
+        roomRef.Child("gameData/drawPile").GetValueAsync().ContinueWithOnMainThread(task => {
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                List<object> list = task.Result.Value as List<object>;
+                List<string> currentDeck = new List<string>();
+                if (list != null) foreach (var item in list) currentDeck.Add(item.ToString());
+
+                int randomIndex = UnityEngine.Random.Range(0, currentDeck.Count + 1);
+                currentDeck.Insert(randomIndex, DrawPileManager.CardType.Explode.ToString());
+
+                roomRef.Child("gameData/drawPile").SetValueAsync(currentDeck);
+            }
+        });
     }
 
     void Update()
@@ -179,9 +215,13 @@ public class OnlineDrawManager : MonoBehaviour
 
     private void OnDeckDoubleClick()
     {
-        // Kiểm tra lượt chơi sử dụng hàm mới tạo
         if (!IsMyTurn()) return;
-        if (isWaitingForFirebase) return;
+
+        if (isWaitingForFirebase || isWaitingForDefuse)
+        {
+            Debug.Log($"Không thể rút: WaitingFirebase={isWaitingForFirebase}, WaitingDefuse={isWaitingForDefuse}");
+            return;
+        }
 
         if (EventSystem.current.IsPointerOverGameObject())
         {
@@ -194,7 +234,11 @@ public class OnlineDrawManager : MonoBehaviour
                 if (r.gameObject.name == "DrawPileDeck")
                 {
                     isWaitingForFirebase = true;
-                    // Yêu cầu rút bài thông qua Action Manager
+
+                    // Kích hoạt cơ chế chống kẹt (Timeout)
+                    if (timeoutCoroutine != null) StopCoroutine(timeoutCoroutine);
+                    timeoutCoroutine = StartCoroutine(StartFirebaseTimeout());
+
                     if (OnlineGameActionManager.Instance != null)
                         OnlineGameActionManager.Instance.RequestDrawCard();
                     break;
@@ -237,6 +281,7 @@ public class OnlineDrawManager : MonoBehaviour
 
     public Transform GetOpponentArea(string opponentName)
     {
+        if (RoomManager.Instance == null) return null;
         List<string> players = RoomManager.Instance.currentRoomPlayers;
         if (players == null) return null;
 
@@ -261,7 +306,17 @@ public class OnlineDrawManager : MonoBehaviour
                 currentTurnIndex = newIndex;
             });
         };
+
+        roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
+            if (e.Snapshot.Exists)
+            {
+                bool waiting = (bool)e.Snapshot.Value;
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    isWaitingForDefuse = waiting;
+                    // Khi trạng thái gỡ bom kết thúc, đảm bảo các biến chờ cũng được reset
+                    if (!waiting) StopWaitingFirebase();
+                });
+            }
+        };
     }
-
 }
-
