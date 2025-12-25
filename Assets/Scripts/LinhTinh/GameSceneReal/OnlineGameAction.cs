@@ -4,7 +4,7 @@ using Firebase.Extensions;
 using System.Collections.Generic;
 using System;
 using UnityEngine.UI;
-using TMPro; // Thêm namespace cho TextMeshPro
+using TMPro;
 
 public class OnlineGameActionManager : MonoBehaviour
 {
@@ -16,11 +16,11 @@ public class OnlineGameActionManager : MonoBehaviour
     public Image[] futureCardSlots;
     public Image discardPileDisplay;
     public List<CardVisualData> cardVisuals;
-    public TextMeshProUGUI bombTimerText; // Đã đổi sang TextMeshPro
+    public TextMeshProUGUI bombTimerText;
 
     [Header("--- THỐNG KÊ BỘ BÀI (NEW) ---")]
-    public TextMeshProUGUI deckCountText;   // Hiển thị: "Bài còn lại: X"
-    public TextMeshProUGUI bombChanceText;  // Hiển thị: "Tỉ lệ bom: X%"
+    public TextMeshProUGUI deckCountText;
+    public TextMeshProUGUI bombChanceText;
 
     [Header("--- TRẠNG THÁI VÒNG CHƠI ---")]
     public int turnsToDraw = 1;
@@ -45,7 +45,6 @@ public class OnlineGameActionManager : MonoBehaviour
         if (discardPileDisplay != null) discardPileDisplay.gameObject.SetActive(false);
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
 
-        // Khởi tạo Text thống kê
         if (deckCountText != null) deckCountText.text = "Bài còn lại: --";
         if (bombChanceText != null) bombChanceText.text = "Tỉ lệ bom: --%";
 
@@ -63,11 +62,11 @@ public class OnlineGameActionManager : MonoBehaviour
         ListenForGameActions();
         ListenForTurnData();
         ListenForDefuseStatus();
-        ListenForDeckStats(); // Lắng nghe bộ bài để cập nhật số lượng và tỉ lệ
+        ListenForDeckStats();
     }
 
     // ================================================================
-    // LOGIC TÍNH TOÁN TỈ LỆ BOM VÀ SỐ LƯỢNG BÀI
+    // LOGIC TÍNH TOÁN TỈ LỆ BOM VÀ SỐ LƯỢNG BÀI (CHỈ BIẾT DỮ LIỆU CHUNG)
     // ================================================================
     private void ListenForDeckStats()
     {
@@ -104,7 +103,7 @@ public class OnlineGameActionManager : MonoBehaviour
     }
 
     // ================================================================
-    // GỬI LỆNH TỪ NGƯỜI CHƠI
+    // GỬI LỆNH TỪ NGƯỜI CHƠI (Hành động mù - không quan tâm bài người khác)
     // ================================================================
 
     private bool CheckIfItIsMyTurn()
@@ -169,7 +168,7 @@ public class OnlineGameActionManager : MonoBehaviour
     }
 
     // ================================================================
-    // LẮNG NGHE VÀ XỬ LÝ (HOST & CLIENT)
+    // LẮNG NGHE VÀ XỬ LÝ (Sử dụng Action để cập nhật game thay vì State)
     // ================================================================
 
     private void ListenForGameActions()
@@ -197,6 +196,7 @@ public class OnlineGameActionManager : MonoBehaviour
                 {
                     UpdateDiscardPileVisual(cardType);
                     ShowCardPlayedInDiscardPile(cardType);
+                    // Chỉ Host mới thực thi logic bài, Client chỉ xem Visual
                     if (OnlineDrawManager.Instance.isHost)
                         ExecuteCardLogic(cardType, sender);
                 }
@@ -227,6 +227,8 @@ public class OnlineGameActionManager : MonoBehaviour
                 }
                 break;
         }
+
+        // Host dọn dẹp Action cũ để tránh tràn dữ liệu
         if (OnlineDrawManager.Instance.isHost) snapshot.Reference.RemoveValueAsync();
     }
 
@@ -295,7 +297,7 @@ public class OnlineGameActionManager : MonoBehaviour
         }
     }
 
-    private void Host_HandleDefuse(string player)
+    private void Host_HandleDefuse(string sender)
     {
         if (isWaitingForDefuse)
         {
@@ -369,7 +371,6 @@ public class OnlineGameActionManager : MonoBehaviour
         DrawPileManager.CardType bottomCard = DrawPileManager.Instance.DrawBottomCardData();
         SyncDeckAfterAction();
 
-        // BUG FIX: Kiểm tra nếu lá bài dưới đáy là bom
         if (bottomCard == DrawPileManager.CardType.Explode)
         {
             Dictionary<string, object> res = new Dictionary<string, object>();
@@ -377,7 +378,6 @@ public class OnlineGameActionManager : MonoBehaviour
             res["target"] = receiver;
             roomRef.Child("actions").Push().SetValueAsync(res);
             roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(true);
-            // KHÔNG gọi HandleEndTurnLogic() vì người chơi cần gỡ bom
         }
         else
         {

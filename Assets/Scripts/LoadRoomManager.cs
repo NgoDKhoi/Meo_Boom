@@ -7,32 +7,45 @@ using Firebase;
 using System.Linq;
 using Firebase.Extensions;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class LoadRoomManager : MonoBehaviour
 {
     private bool isLeaderboardOpen = false;
 
-    // GIỮ LẠI URL NẾU DEFAULT INSTANCE GẶP VẤN ĐỀ
+    // Firebase Database URL
     private const string DatabaseUrl = "https://mygametest2-default-rtdb.asia-southeast1.firebasedatabase.app";
 
+    [Header("UI References")]
     [SerializeField] private TextMeshProUGUI Text_LoginName;
     [SerializeField] private TextMeshProUGUI Text_Score;
     [SerializeField] private GameObject Panel_Leaderboard;
-    [SerializeField] public GameObject LeaderboardItem_Prefab;
+    [SerializeField] private GameObject LeaderboardItem_Prefab;
     [SerializeField] private GameObject LeaderboardContent_Parent;
     [SerializeField] private GameObject Panel_MainUI;
     [SerializeField] private GameObject Panel_NhapID;
-    // [SerializeField] private GameObject Panel_NhapID; -> cho code
+
+    private DatabaseReference userRef;
+    private FirebaseUser currentUser;
 
     void Start()
     {
         InitializeFirebase();
-        LoadUserDataFromFirebase();
 
-        if (Panel_MainUI != null)
-            Panel_MainUI.SetActive(true);
-        if (Panel_Leaderboard != null)
-            Panel_Leaderboard.SetActive(false);
+        if (Panel_MainUI != null) Panel_MainUI.SetActive(true);
+        if (Panel_Leaderboard != null) Panel_Leaderboard.SetActive(false);
+        if (Panel_NhapID != null) Panel_NhapID.SetActive(false);
+
+        SetupRealtimeUserData();
+    }
+
+    private void OnDestroy()
+    {
+        // Hủy lắng nghe để tránh lỗi memory leak khi chuyển Scene
+        if (userRef != null)
+        {
+            userRef.ValueChanged -= HandleUserDataChanged;
+        }
     }
 
     private void InitializeFirebase()
@@ -42,113 +55,88 @@ public class LoadRoomManager : MonoBehaviour
         {
             app.Options.DatabaseUrl = new System.Uri(DatabaseUrl);
         }
+        currentUser = FirebaseAuth.DefaultInstance.CurrentUser;
     }
 
-    // Cập nhật để ưu tiên tải Username và Score
-    private void LoadUserDataFromFirebase()
+    // Thiết lập lắng nghe dữ liệu Real-time
+    private void SetupRealtimeUserData()
     {
-        FirebaseUser user = FirebaseAuth.DefaultInstance.CurrentUser;
-
-        if (user != null)
+        if (currentUser == null)
         {
-            string userId = user.UserId;
-            // Hiển thị email hoặc một tên tạm thời trước
-            Text_LoginName.text = "Đang tải tên...";
+            Text_LoginName.text = "Chưa đăng nhập";
+            Text_Score.text = "Điểm: 0";
+            return;
+        }
 
-            UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        Text_LoginName.text = "Đang tải...";
+        Text_Score.text = "Điểm: ...";
+
+        userRef = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference("users").Child(currentUser.UserId);
+
+        // Đăng ký sự kiện: Mỗi khi Data trên Firebase đổi, hàm HandleUserDataChanged sẽ tự chạy
+        userRef.ValueChanged += HandleUserDataChanged;
+    }
+
+    private void HandleUserDataChanged(object sender, ValueChangedEventArgs args)
+    {
+        if (args.DatabaseError != null)
+        {
+            Debug.LogError($"Lỗi Realtime: {args.DatabaseError.Message}");
+            return;
+        }
+
+        if (args.Snapshot.Exists)
+        {
+            // Lấy Username
+            string username = args.Snapshot.Child("username").Exists
+                ? args.Snapshot.Child("username").Value.ToString()
+                : currentUser.Email;
+
+            // Lấy Score an toàn
+            long score = 0;
+            object scoreVal = args.Snapshot.Child("score").Value;
+            if (scoreVal != null)
             {
-                Text_Score.text = "Điểm: Đang tải...";
-            });
+                score = System.Convert.ToInt64(scoreVal);
+            }
 
-            Debug.Log("UID của tôi là: " + userId);
-
-            DatabaseReference reference = FirebaseDatabase.GetInstance(DatabaseUrl).RootReference;
-
-            reference.Child("users").Child(userId).GetValueAsync().ContinueWithOnMainThread(task =>
-            {
-                if (task.IsFaulted)
-                {
-                    Debug.LogError($"LỖI ĐIỂM CÁ NHÂN: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
-                    Text_LoginName.text = user.Email; // Dùng email tạm thời nếu lỗi
-                    Text_Score.text = "Điểm: LỖI KẾT NỐI";
-                    return;
-                }
-
-                if (task.IsCompleted)
-                {
-                    DataSnapshot snapshot = task.Result;
-
-                    if (snapshot.Exists)
-                    {
-                        // 1. Lấy Username
-                        string username = snapshot.Child("username").Exists ? snapshot.Child("username").Value.ToString() : user.Email;
-
-                        // 2. Lấy Score
-                        object scoreObject = snapshot.Child("score").Value;
-                        long score = 0;
-
-                        if (scoreObject is long l) score = l;
-                        else if (scoreObject is int i) score = i;
-                        else if (scoreObject is double d) score = (long)d;
-
-                        // Cập nhật UI
-                        Text_LoginName.text = username;
-                        Text_Score.text = "Điểm: " + score.ToString();
-                    }
-                    else
-                    {
-                        Text_LoginName.text = user.Email;
-                        Text_Score.text = "Điểm: 0 (Chưa có dữ liệu)";
-                    }
-                }
+            // Cập nhật UI (Luôn chạy trên Main Thread vì ValueChanged của Firebase đôi khi chạy thread riêng)
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                Text_LoginName.text = username;
+                Text_Score.text = $"Điểm: {score}";
             });
         }
         else
         {
-            Text_LoginName.text = "Đăng nhập thất bại";
+            Text_LoginName.text = currentUser.Email;
             Text_Score.text = "Điểm: 0";
         }
     }
 
+    #region Button Events
+
     public void OnCreateRoomClicked()
     {
-        // Debug.Log("Tạo Phòng. (Cần logic chuyển Scene)");
-        
         SceneManager.LoadScene("RoomScene");
-        
     }
 
     public void OnJoinRoomClicked()
     {
-        Debug.Log("Tham Gia Phòng.");
-
-        
         if (Panel_NhapID != null)
         {
             Panel_NhapID.SetActive(true);
             Panel_MainUI.SetActive(false);
-            Panel_Leaderboard.SetActive(false);
         }
-        else
-        {
-            Debug.LogError("LỖI CẤU HÌNH: Thiếu Panel_NhapID.");
-        }
-        
     }
 
     public void OnVsBotClicked()
     {
-        Debug.Log("Chơi với Máy. (Cần logic chuyển Scene game)");
         SceneManager.LoadScene("Gameplay");
     }
 
     public void OnLeaderboardClicked()
     {
-        if (Panel_Leaderboard == null || Panel_MainUI == null) return;
-
-        bool isLeaderboardShowing = Panel_Leaderboard.activeSelf;
-
-        if (!isLeaderboardShowing)
+        if (Panel_Leaderboard != null && Panel_MainUI != null)
         {
             isLeaderboardOpen = true;
             Panel_MainUI.SetActive(false);
@@ -164,182 +152,97 @@ public class LoadRoomManager : MonoBehaviour
         Panel_MainUI.SetActive(true);
     }
 
+    #endregion
+
+    #region Leaderboard Logic
+
     private void LoadLeaderboardData()
     {
-        if (LeaderboardItem_Prefab == null || LeaderboardContent_Parent == null)
+        if (LeaderboardItem_Prefab == null || LeaderboardContent_Parent == null) return;
+
+        // Xóa sạch list cũ
+        foreach (Transform child in LeaderboardContent_Parent.transform)
         {
-            Debug.LogError("LỖI CẤU HÌNH: Thiếu Prefab hoặc Content Parent.");
-            return;
+            Destroy(child.gameObject);
         }
 
-        Transform contentParent = LeaderboardContent_Parent.transform;
+        StartFirebaseLeaderboardQuery();
+    }
 
-        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+    private void StartFirebaseLeaderboardQuery()
+    {
+        DatabaseReference dbRef = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference("users");
+
+        // Lấy top 5 điểm cao nhất
+        dbRef.OrderByChild("score").LimitToLast(5).GetValueAsync().ContinueWithOnMainThread(task =>
         {
-            // Xóa các item cũ
-            for (int i = contentParent.childCount - 1; i >= 0; i--)
+            if (!isLeaderboardOpen || task.IsFaulted) return;
+
+            DataSnapshot snapshot = task.Result;
+            List<(string uid, string name, long score)> entries = new List<(string uid, string name, long score)>();
+
+            foreach (var child in snapshot.Children)
             {
-                GameObject child = contentParent.GetChild(i).gameObject;
-                if (child != null)
-                {
-                    Destroy(child);
-                }
+                string uid = child.Key;
+                string name = child.Child("username").Exists ? child.Child("username").Value.ToString() : "Người chơi";
+                long score = child.Child("score").Exists ? System.Convert.ToInt64(child.Child("score").Value) : 0;
+                entries.Add((uid, name, score));
             }
-            StartFirebaseQuery(contentParent);
+
+            // Firebase trả về từ thấp đến cao -> Cần đảo ngược lại
+            entries.Reverse();
+
+            // Hiển thị Top 5
+            for (int i = 0; i < entries.Count; i++)
+            {
+                CreateLeaderboardItem(i + 1, entries[i].uid, entries[i].name, entries[i].score);
+            }
+
+            // Xử lý hiển thị hạng cá nhân nếu không nằm trong Top 5
+            CheckAndDisplayUserRank(entries);
         });
     }
 
-    const int TopLimit = 5;
-
-    private void StartFirebaseQuery(Transform contentParent)
+    private void CreateLeaderboardItem(int rank, string uid, string name, long score)
     {
-        if (!isLeaderboardOpen)
+        GameObject go = Instantiate(LeaderboardItem_Prefab, LeaderboardContent_Parent.transform);
+        var item = go.GetComponent<LeaderboardItem>();
+
+        string displayName = name;
+        if (uid == currentUser.UserId) displayName += " <color=yellow>(BẠN)</color>";
+
+        if (item != null) item.SetData(rank, displayName, (int)score);
+    }
+
+    private void CheckAndDisplayUserRank(List<(string uid, string name, long score)> topFive)
+    {
+        // Nếu mình đã ở trong Top 5 rồi thì không cần hiển thị thêm hạng riêng lẻ phía dưới
+        if (topFive.Any(u => u.uid == currentUser.UserId)) return;
+
+        // Lấy điểm hiện tại của mình để tính hạng
+        userRef.GetValueAsync().ContinueWithOnMainThread(task =>
         {
-            Debug.Log("⚠️ Leaderboard đã đóng, bỏ qua callback Firebase.");
-            return;
-        }
+            if (task.IsFaulted || !task.Result.Exists) return;
 
-        if (contentParent == null)
-        {
-            Debug.LogWarning("Content Parent đã bị hủy trước khi truy vấn Firebase bắt đầu.");
-            return;
-        }
+            long myScore = System.Convert.ToInt64(task.Result.Child("score").Value);
+            string myName = task.Result.Child("username").Exists ? task.Result.Child("username").Value.ToString() : currentUser.Email;
 
-        DatabaseReference reference = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference("users");
-
-        FirebaseUser currentUser = FirebaseAuth.DefaultInstance.CurrentUser;
-        string currentUserId = currentUser?.UserId;
-        string currentUserEmail = currentUser?.Email; // Giữ lại email để làm tên dự phòng
-
-        // Đã thay đổi: Lưu cả userId, username, và score
-        reference.OrderByChild("score").LimitToLast(TopLimit).GetValueAsync().ContinueWith(task =>
-        {
-            if (task.IsFaulted)
-            {
-                Debug.LogError($"LỖI TẢI BXH: {task.Exception.InnerException?.Message ?? task.Exception.Message}");
-                return;
-            }
-
-            if (task.IsCompleted)
-            {
-                DataSnapshot snapshot = task.Result;
-                var userScores = new System.Collections.Generic.List<(string userId, string username, long score)>();
-
-                foreach (var childSnapshot in snapshot.Children)
+            // Truy vấn xem có bao nhiêu người điểm cao hơn mình
+            FirebaseDatabase.GetInstance(DatabaseUrl).GetReference("users")
+                .OrderByChild("score").StartAt(myScore).GetValueAsync().ContinueWithOnMainThread(rankTask =>
                 {
-                    string userId = childSnapshot.Key;
+                    if (rankTask.IsFaulted) return;
 
-                    // LẤY USERNAME (hoặc dùng email nếu username không tồn tại)
-                    string username = childSnapshot.Child("username").Exists ? childSnapshot.Child("username").Value.ToString() : (childSnapshot.Child("email").Exists ? childSnapshot.Child("email").Value.ToString() : "N/A");
+                    // Hạng = số người có điểm >= mình
+                    int myRank = (int)rankTask.Result.ChildrenCount;
 
-                    object scoreObject = childSnapshot.Child("score").Value;
-                    long score = 0;
-                    if (scoreObject is long l) score = l;
-                    else if (scoreObject is int i) score = i;
-                    else if (scoreObject is double d) score = (long)d;
-
-                    userScores.Add((userId, username, score));
-                }
-                userScores.Reverse();
-
-                UnityMainThreadDispatcher.Instance().Enqueue(() =>
-                {
-
-                    if (!isLeaderboardOpen || this == null || gameObject == null ||
-                        !gameObject.activeInHierarchy || contentParent == null ||
-                        LeaderboardItem_Prefab == null)
-                    {
-                        Debug.LogWarning("⚠️ Bỏ qua cập nhật vì UI đã đóng hoặc bị hủy.");
-                        return;
-                    }
-
-                    for (int i = 0; i < userScores.Count; i++)
-                    {
-                        if (!isLeaderboardOpen) break;
-                        int index = i;
-
-                        string nameToDisplay = userScores[index].username;
-
-                        if (userScores[index].userId == currentUserId)
-                        {
-                            // Thêm chuỗi đánh dấu vào tên người chơi
-                            nameToDisplay += " (HẠNG CỦA BẠN)";
-                        }
-
-                        GameObject newEntry = Instantiate(LeaderboardItem_Prefab, contentParent);
-                        newEntry.SetActive(true);
-
-                        LeaderboardItem itemScript = newEntry.GetComponent<LeaderboardItem>();
-                        if (itemScript != null)
-                            itemScript.SetData(index + 1, nameToDisplay, (int)userScores[index].score);
-                    }
-
-                    // Truyền currentUserEmail để LoadCurrentUserRank có tên dự phòng
-                    LoadCurrentUserRank(currentUserId, currentUserEmail, userScores.Select(u => (u.userId, u.score)).ToList());
+                    // Tạo vạch ngăn cách "..."
+                    CreateLeaderboardItem(0, "", ".........", 0);
+                    // Hiển thị hạng của mình
+                    CreateLeaderboardItem(myRank, currentUser.UserId, myName, myScore);
                 });
-            }
-        }, TaskScheduler.Default);
+        });
     }
 
-    // Cập nhật tham số topScores
-    private void LoadCurrentUserRank(string currentUserId, string currentUserEmail, System.Collections.Generic.List<(string userId, long score)> topScores)
-    {
-        if (string.IsNullOrEmpty(currentUserId)) return;
-        Transform contentParent = LeaderboardContent_Parent.transform;
-        if (contentParent == null) return;
-
-        DatabaseReference userReference = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference($"users/{currentUserId}");
-
-        userReference.GetValueAsync().ContinueWith(task => // Lấy toàn bộ data người dùng hiện tại
-        {
-            if (task.IsCompleted && !task.IsFaulted && task.Result.Exists)
-            {
-                DataSnapshot snapshot = task.Result;
-
-                // 1. Lấy Tên và Điểm
-                string currentUsername = snapshot.Child("username").Exists ? snapshot.Child("username").Value.ToString() : currentUserEmail;
-                long currentScore = snapshot.Child("score").Value is long l ? l : (snapshot.Child("score").Value is int i ? (long)i : (snapshot.Child("score").Value is double d ? (long)d : 0));
-
-                bool isInTopX = topScores.Any(item => item.userId == currentUserId);
-                if (isInTopX) return;
-
-                DatabaseReference rankRef = FirebaseDatabase.GetInstance(DatabaseUrl).GetReference("users");
-
-                rankRef.OrderByChild("score")
-                    .StartAt(currentScore)
-                    .GetValueAsync()
-                    .ContinueWith(rankTask =>
-                    {
-                        if (rankTask.IsCompleted && !rankTask.IsFaulted)
-                        {
-                            DataSnapshot rankSnapshot = rankTask.Result;
-                            // Số lượng người chơi có điểm lớn hơn hoặc bằng điểm của người chơi hiện tại
-                            long myRank = rankSnapshot.ChildrenCount;
-
-                            UnityMainThreadDispatcher.Instance().Enqueue(() =>
-                            {
-                                if (contentParent == null || LeaderboardItem_Prefab == null) return;
-
-                                bool showSeparator = (int)myRank > TopLimit;
-
-                                if (showSeparator)
-                                {
-                                    GameObject separatorEntry = Instantiate(LeaderboardItem_Prefab, contentParent);
-                                    separatorEntry.SetActive(true);
-                                    LeaderboardItem sepScript = separatorEntry.GetComponent<LeaderboardItem>();
-                                    if (sepScript != null)
-                                        sepScript.SetData(0, ".........", 0);
-                                }
-
-                                GameObject rankEntry = Instantiate(LeaderboardItem_Prefab, contentParent);
-                                rankEntry.SetActive(true);
-                                LeaderboardItem itemScript = rankEntry.GetComponent<LeaderboardItem>();
-                                if (itemScript != null)
-                                    itemScript.SetData((int)myRank, currentUsername + " (HẠNG CỦA BẠN)", (int)currentScore);
-                            });
-                        }
-                    }, TaskScheduler.Default);
-            }
-        }, TaskScheduler.Default);
-    }
+    #endregion
 }

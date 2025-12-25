@@ -174,8 +174,6 @@ public class GameSceneManager : MonoBehaviour
     void AssignPlayerInfo(GameObject playerUI, string playerName, int viewIndex)
     {
         TMP_Text usernameText = null;
-        TMP_Text cardCountText = null;
-
         // Lấy tất cả các component TMP_Text trong Prefab con (Tìm kiếm sâu)
         TMP_Text[] allTexts = playerUI.GetComponentsInChildren<TMP_Text>(true);
 
@@ -188,11 +186,6 @@ public class GameSceneManager : MonoBehaviour
             {
                 usernameText = textComponent;
             }
-            // Tìm kiếm linh hoạt cho Card/Count/Lá
-            else if (name.Contains("Card", System.StringComparison.OrdinalIgnoreCase))
-            {
-                cardCountText = textComponent;
-            }
         }
 
         if (usernameText != null)
@@ -203,16 +196,6 @@ public class GameSceneManager : MonoBehaviour
         else
         {
             Debug.LogError($"LỖI UI: Không tìm thấy Text Component chứa 'Username' hoặc 'PlayerName' trong Prefab {playerUI.name}.");
-        }
-
-        if (cardCountText != null)
-        {
-            cardCountText.text = "0 Lá";
-            cardCountText.gameObject.SetActive(true);
-        }
-        else
-        {
-            Debug.LogError($"LỖI UI: Không tìm thấy Text Component chứa 'Card' hoặc 'Count'/'Lá' trong Prefab {playerUI.name}.");
-        }
+        } 
     }
 }

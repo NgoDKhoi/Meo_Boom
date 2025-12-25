@@ -813,7 +813,7 @@ MonoBehaviour:
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -3111,73 +3111,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1744599677
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1744599680}
-  - component: {fileID: 1744599679}
-  - component: {fileID: 1744599678}
-  m_Layer: 0
-  m_Name: AnimationManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1744599678
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1744599677}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 876f30f49aa0dd54aaa66e61536d86a5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OnlineAnimationBridge
---- !u!114 &1744599679
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1744599677}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 83b2f3b0d2755424c99b18e7ce822f10, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OnlineAnimationManager
-  cardBackPrefab: {fileID: 551720893867478409, guid: b779dee722d365c49a352ea51c2a8910, type: 3}
-  explosionFX: {fileID: 5705259250422523252, guid: d887658f8241cab40a79e59ac908fdd1, type: 3}
-  defuseFX: {fileID: 984563606955094092, guid: 07eb62691a9a43547a2f5e1ff619354b, type: 3}
-  seeFutureFX: {fileID: 1984646259280761391, guid: 61fadf2850fc09d468b927db0ac5fab9, type: 3}
-  shuffleFX: {fileID: 247237600805506018, guid: 4f20d10337ed66f4ea22f9ae0ca1d12f, type: 3}
-  attackFX: {fileID: 5994458097385215752, guid: ff2957983e872034ebc71c5b523ef406, type: 3}
-  skipFX: {fileID: 1079388514993842112, guid: 948e300d41ae51242ab1036c2cc263ad, type: 3}
-  drawBottomFX: {fileID: 8416661452022423339, guid: 76d472b15a6da7a42b643ec466b6fa79, type: 3}
-  drawPilePos: {fileID: 1059621775}
-  centerPlaySlot: {fileID: 740361017}
---- !u!4 &1744599680
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1744599677}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.02789, y: 0.29924, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1761430693
 GameObject:
   m_ObjectHideFlags: 0
@@ -3800,5 +3733,4 @@ SceneRoots:
   - {fileID: 1273632535}
   - {fileID: 543090224}
   - {fileID: 399223238}
-  - {fileID: 1744599680}
   - {fileID: 749003080}

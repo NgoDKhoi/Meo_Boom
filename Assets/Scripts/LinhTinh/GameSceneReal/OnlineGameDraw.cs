@@ -23,7 +23,7 @@ public class OnlineDrawManager : MonoBehaviour
 
     [Header("--- Game Config ---")]
     public int cardsPerPlayer = 4;
-    public float firebaseResponseTimeout = 3.5f;
+    public float firebaseResponseTimeout = 5.0f;
 
     [Header("--- Game State ---")]
     public int currentTurnIndex = 0;
@@ -45,17 +45,14 @@ public class OnlineDrawManager : MonoBehaviour
 
     public bool IsMyTurn()
     {
-        if (OnlineGameLogic.Instance != null)
-        {
-            return OnlineGameLogic.Instance.IsMyTurn();
-        }
+        if (OnlineGameLogic.Instance != null) return OnlineGameLogic.Instance.IsMyTurn();
 
         if (RoomManager.Instance != null && RoomManager.Instance.currentRoomPlayers != null)
         {
+            if (currentTurnIndex < 0 || RoomManager.Instance.currentRoomPlayers.Count == 0) return false;
             string currentTurnPlayer = RoomManager.Instance.currentRoomPlayers[currentTurnIndex % RoomManager.Instance.currentRoomPlayers.Count];
             return currentTurnPlayer == RoomManager.Instance.currentUsername;
         }
-
         return false;
     }
 
@@ -67,8 +64,7 @@ public class OnlineDrawManager : MonoBehaviour
         string roomID = RoomManager.Instance.currentRoomID;
         roomRef = FirebaseManager.Instance.Database.RootReference.Child("rooms").Child(roomID);
 
-        // Đợi một chút để đảm bảo Firebase đã sẵn sàng trước khi lắng nghe
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.3f);
 
         List<string> players = RoomManager.Instance.currentRoomPlayers;
         if (players != null && players.Count > 0)
@@ -76,37 +72,33 @@ public class OnlineDrawManager : MonoBehaviour
             isHost = (RoomManager.Instance.currentUsername == players[0]);
         }
 
-        // Đăng ký lắng nghe TRƯỚC khi Host chia bài
         ListenToGameState();
         ListenForVisualActions();
 
         if (isHost && DrawPileManager.Instance != null)
         {
-            // Host đợi thêm 1 giây để các máy Client kịp vào Scene và đăng ký Listener
-            yield return new WaitForSeconds(1.0f);
+            yield return new WaitForSeconds(2.0f);
             StartCoroutine(HostStartGameSequence(players));
         }
     }
 
     private IEnumerator HostStartGameSequence(List<string> players)
     {
-        // Xóa các actions cũ nếu có để tránh xung đột bài cũ
-        yield return roomRef.Child("actions").RemoveValueAsync();
+        var task = roomRef.Child("actions").RemoveValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
 
         DrawPileManager.Instance.PrepareSafeDeck(players.Count);
 
         foreach (string playerName in players)
         {
-            // Tặng mỗi người 1 lá Defuse mặc định
             SendInitialConfirmedCard(playerName, DrawPileManager.CardType.Defuse.ToString());
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSeconds(0.25f);
 
-            // Chia thêm số lá bài theo cấu hình
             for (int i = 0; i < cardsPerPlayer; i++)
             {
                 DrawPileManager.CardType randomCard = DrawPileManager.Instance.DrawCardData();
                 SendInitialConfirmedCard(playerName, randomCard.ToString());
-                yield return new WaitForSeconds(0.15f); // Delay nhỏ để tránh spam Firebase
+                yield return new WaitForSeconds(0.2f);
             }
         }
 
@@ -115,7 +107,46 @@ public class OnlineDrawManager : MonoBehaviour
 
         roomRef.Child("gameData/currentTurnIndex").SetValueAsync(0);
         roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
-        Debug.Log("<color=cyan>Host đã chia bài xong cho tất cả người chơi.</color>");
+
+        Dictionary<string, object> startAction = new Dictionary<string, object>();
+        startAction["type"] = "GAME_START_SIGNAL";
+        roomRef.Child("actions").Push().SetValueAsync(startAction);
+    }
+
+    // --- CÁC HÀM CẬP NHẬT FIREBASE CHO HOST ---
+
+    public void UpdateDeckToFirebaseFromManager()
+    {
+        if (!isHost || DrawPileManager.Instance == null) return;
+
+        List<DrawPileManager.CardType> currentDeck = DrawPileManager.Instance.GetTopCards(DrawPileManager.Instance.GetRemainingCount());
+        List<string> deckStr = new List<string>();
+        foreach (var card in currentDeck) deckStr.Add(card.ToString());
+
+        roomRef.Child("gameData/drawPile").SetValueAsync(deckStr);
+    }
+
+    // Đã thêm lại hàm bị thiếu ở đây
+    public void Host_InsertBombToFirebaseDeck()
+    {
+        if (!isHost) return;
+
+        roomRef.Child("gameData/drawPile").GetValueAsync().ContinueWithOnMainThread(task => {
+            if (task.IsCompleted && task.Result.Exists)
+            {
+                List<object> list = task.Result.Value as List<object>;
+                List<string> currentDeck = new List<string>();
+                if (list != null) foreach (var item in list) currentDeck.Add(item.ToString());
+
+                // Chèn bom vào vị trí ngẫu nhiên trong bộ bài trên Firebase
+                int randomIndex = UnityEngine.Random.Range(0, currentDeck.Count + 1);
+                currentDeck.Insert(randomIndex, "Explode"); // CardType.Explode.ToString()
+
+                roomRef.Child("gameData/drawPile").SetValueAsync(currentDeck).ContinueWithOnMainThread(t => {
+                    Debug.Log("<color=orange>Host: Đã chèn bom trở lại bộ bài Firebase.</color>");
+                });
+            }
+        });
     }
 
     private void SendInitialConfirmedCard(string receiver, string cardName)
@@ -124,7 +155,7 @@ public class OnlineDrawManager : MonoBehaviour
         result["type"] = "DRAW_CONFIRMED";
         result["target"] = receiver;
         result["cardType"] = cardName;
-        result["timestamp"] = ServerValue.Timestamp; // Thêm timestamp để đảm bảo thứ tự
+        result["timestamp"] = ServerValue.Timestamp;
         roomRef.Child("actions").Push().SetValueAsync(result);
     }
 
@@ -150,11 +181,9 @@ public class OnlineDrawManager : MonoBehaviour
                     {
                         StopWaitingFirebase();
                         SpawnCardToHand(cardName);
-                        Debug.Log($"<color=green>Đã nhận bài: {cardName}</color>");
                     }
                     else if (!string.IsNullOrEmpty(target))
                     {
-                        // Hiển thị lá bài úp cho đối thủ
                         SpawnCardBackForOpponent(target);
                     }
                 }
@@ -163,7 +192,6 @@ public class OnlineDrawManager : MonoBehaviour
                     if (data.ContainsKey("target") && data["target"].ToString() == RoomManager.Instance.currentUsername)
                     {
                         StopWaitingFirebase();
-                        Debug.Log("<color=red>Dính bom!</color>");
                     }
                 }
             });
@@ -185,40 +213,9 @@ public class OnlineDrawManager : MonoBehaviour
         yield return new WaitForSeconds(firebaseResponseTimeout);
         if (isWaitingForFirebase)
         {
-            Debug.LogWarning("Firebase Timeout! Tự động giải phóng trạng thái chờ rút bài.");
             isWaitingForFirebase = false;
         }
         timeoutCoroutine = null;
-    }
-
-    public void UpdateDeckToFirebaseFromManager()
-    {
-        if (!isHost || DrawPileManager.Instance == null) return;
-
-        List<DrawPileManager.CardType> currentDeck = DrawPileManager.Instance.GetTopCards(DrawPileManager.Instance.GetRemainingCount());
-        List<string> deckStr = new List<string>();
-        foreach (var card in currentDeck) deckStr.Add(card.ToString());
-
-        roomRef.Child("gameData/drawPile").SetValueAsync(deckStr);
-    }
-
-    public void Host_InsertBombToFirebaseDeck()
-    {
-        if (!isHost) return;
-
-        roomRef.Child("gameData/drawPile").GetValueAsync().ContinueWithOnMainThread(task => {
-            if (task.IsCompleted && task.Result.Exists)
-            {
-                List<object> list = task.Result.Value as List<object>;
-                List<string> currentDeck = new List<string>();
-                if (list != null) foreach (var item in list) currentDeck.Add(item.ToString());
-
-                int randomIndex = UnityEngine.Random.Range(0, currentDeck.Count + 1);
-                currentDeck.Insert(randomIndex, DrawPileManager.CardType.Explode.ToString());
-
-                roomRef.Child("gameData/drawPile").SetValueAsync(currentDeck);
-            }
-        });
     }
 
     void Update()
@@ -233,12 +230,7 @@ public class OnlineDrawManager : MonoBehaviour
 
     private void OnDeckDoubleClick()
     {
-        if (!IsMyTurn()) return;
-
-        if (isWaitingForFirebase || isWaitingForDefuse)
-        {
-            return;
-        }
+        if (!IsMyTurn() || isWaitingForFirebase || isWaitingForDefuse) return;
 
         if (EventSystem.current.IsPointerOverGameObject())
         {
@@ -272,10 +264,8 @@ public class OnlineDrawManager : MonoBehaviour
             foreach (var p in cardPrefabs)
             {
                 if (p == null) continue;
-                // Lưu ý: Đảm bảo Prefab bài của bạn có OnlineCardController hoặc CardController tương ứng
                 var cc = p.GetComponent<OnlineCardController>();
                 if (cc == null) cc = p.GetComponentInChildren<OnlineCardController>();
-
                 if (cc != null && cc.cardType == type) { selected = p; break; }
             }
 
@@ -290,19 +280,15 @@ public class OnlineDrawManager : MonoBehaviour
     public void SpawnCardBackForOpponent(string opponentName)
     {
         if (cardBackPrefab == null || string.IsNullOrEmpty(opponentName)) return;
-
         Transform targetArea = GetOpponentArea(opponentName);
-        if (targetArea != null)
-        {
-            Instantiate(cardBackPrefab, targetArea);
-        }
+        if (targetArea != null) Instantiate(cardBackPrefab, targetArea);
     }
 
     public Transform GetOpponentArea(string opponentName)
     {
         if (RoomManager.Instance == null) return null;
         List<string> players = RoomManager.Instance.currentRoomPlayers;
-        if (players == null) return null;
+        if (players == null || players.Count == 0) return null;
 
         int myIdx = players.IndexOf(RoomManager.Instance.currentUsername);
         int oppIdx = players.IndexOf(opponentName);
@@ -321,9 +307,7 @@ public class OnlineDrawManager : MonoBehaviour
         roomRef.Child("gameData/currentTurnIndex").ValueChanged += (s, e) => {
             if (!e.Snapshot.Exists) return;
             int newIndex = Convert.ToInt32(e.Snapshot.Value);
-            UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                currentTurnIndex = newIndex;
-            });
+            UnityMainThreadDispatcher.Instance().Enqueue(() => { currentTurnIndex = newIndex; });
         };
 
         roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
