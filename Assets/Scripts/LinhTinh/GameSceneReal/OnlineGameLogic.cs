@@ -22,30 +22,31 @@ public class OnlineGameLogic : MonoBehaviour
     public bool isWaitingForDefuse = false;
     public bool isGameOver = false;
 
-    // Danh sách lưu trữ trạng thái sống sót của từng người chơi
+    // Danh sách lưu trữ trạng thái sống sót của từng người chơi: <Tên người chơi, Còn sống hay không>
     public Dictionary<string, bool> playerLifeStatus = new Dictionary<string, bool>();
 
     [Header("--- UI References ---")]
     public TextMeshProUGUI turnInfoText;
     public Button playCardButton;
 
-    [Header("--- Victory UI (Mới) ---")]
-    public GameObject victoryPanel;          // Kéo thả Panel chúc mừng vào đây
-    public TextMeshProUGUI winnerNameText;    // Text hiển thị tên người thắng trên Panel
-    public Button confirmVictoryButton;      // Nút để thoát về LoadRoomScene
-    public GameObject Panel_GamePlay;
+    [Header("--- Victory UI ---")]
+    public GameObject victoryPanel;          // Panel thông báo chiến thắng
+    public TextMeshProUGUI winnerNameText;    // Text hiển thị tên người thắng
+    public Button confirmVictoryButton;      // Nút xác nhận để thoát
+    public GameObject Panel_GamePlay;         // Panel chứa bàn chơi chính để ẩn đi khi kết thúc
 
     void Awake()
     {
-        Instance = this;
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
     void Start()
     {
+        // Khởi tạo trạng thái UI ban đầu
         if (playCardButton != null) playCardButton.interactable = false;
         if (victoryPanel != null) victoryPanel.SetActive(false);
 
-        // Gán sự kiện cho nút xác nhận nếu có
         if (confirmVictoryButton != null)
             confirmVictoryButton.onClick.AddListener(ReturnToLoadRoom);
 
@@ -54,6 +55,7 @@ public class OnlineGameLogic : MonoBehaviour
 
     private System.Collections.IEnumerator WaitForRoomData()
     {
+        // Đợi cho đến khi RoomManager đã sẵn sàng dữ liệu phòng
         while (RoomManager.Instance == null || string.IsNullOrEmpty(RoomManager.Instance.currentRoomID))
         {
             yield return new WaitForSeconds(0.5f);
@@ -66,8 +68,15 @@ public class OnlineGameLogic : MonoBehaviour
         var players = RoomManager.Instance.currentRoomPlayers;
         if (players != null && players.Count > 0)
         {
+            // Xác định xem mình có phải chủ phòng không (thường là người ở vị trí index 0)
             isHost = (RoomManager.Instance.currentUsername == players[0]);
-            foreach (var p in players) playerLifeStatus[p] = true;
+
+            // Khởi tạo trạng thái sống cho tất cả người chơi
+            foreach (var p in players)
+            {
+                if (!playerLifeStatus.ContainsKey(p))
+                    playerLifeStatus[p] = true;
+            }
         }
 
         ListenToGameState();
@@ -77,6 +86,7 @@ public class OnlineGameLogic : MonoBehaviour
 
     private void ListenToGameState()
     {
+        // Theo dõi chỉ số lượt đi
         roomRef.Child("gameData/currentTurnIndex").ValueChanged += (s, e) => {
             if (e.Snapshot.Exists && e.Snapshot.Value != null)
             {
@@ -88,6 +98,7 @@ public class OnlineGameLogic : MonoBehaviour
             }
         };
 
+        // Theo dõi trạng thái đang chờ gỡ bom
         roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
             bool waiting = false;
             if (e.Snapshot.Exists && e.Snapshot.Value != null)
@@ -104,6 +115,7 @@ public class OnlineGameLogic : MonoBehaviour
 
     private void ListenToPlayersLife()
     {
+        // Theo dõi khi có thay đổi về tình trạng sống/chết của người chơi trong node "players"
         roomRef.Child("players").ChildAdded += HandlePlayerLifeChange;
         roomRef.Child("players").ChildChanged += HandlePlayerLifeChange;
     }
@@ -114,6 +126,7 @@ public class OnlineGameLogic : MonoBehaviour
         {
             string pName = e.Snapshot.Key;
             bool isDead = false;
+
             if (e.Snapshot.HasChild("isDead"))
             {
                 isDead = (bool)e.Snapshot.Child("isDead").Value;
@@ -125,9 +138,10 @@ public class OnlineGameLogic : MonoBehaviour
 
                 if (isDead && pName == RoomManager.Instance.currentUsername)
                 {
-                    Debug.Log("<color=red>BẠN ĐÃ BỊ LOẠI KHỎI CUỘC CHƠI!</color>");
+                    Debug.Log("<color=red>[Game] Bạn đã bị nổ tung và loại khỏi cuộc chơi!</color>");
                 }
 
+                // Chỉ Host mới thực hiện kiểm tra điều kiện thắng để tránh xung đột ghi đè dữ liệu
                 if (isHost && !isGameOver)
                 {
                     CheckWinCondition();
@@ -138,8 +152,10 @@ public class OnlineGameLogic : MonoBehaviour
 
     private void CheckWinCondition()
     {
+        // Đếm số người còn sống
         var survivors = playerLifeStatus.Where(p => p.Value == true).Select(p => p.Key).ToList();
 
+        // Nếu chỉ còn 1 người sống sót (trong trận đấu ít nhất 2 người)
         if (survivors.Count == 1 && playerLifeStatus.Count >= 2)
         {
             string winnerName = survivors[0];
@@ -161,6 +177,7 @@ public class OnlineGameLogic : MonoBehaviour
 
                     if (playCardButton != null) playCardButton.interactable = false;
 
+                    // Host thực hiện cộng điểm cho người thắng vào Database
                     if (isHost)
                     {
                         AddPointToWinnerUID(winner);
@@ -172,39 +189,40 @@ public class OnlineGameLogic : MonoBehaviour
 
     private void ShowVictoryUI(string winnerName)
     {
+        string myName = RoomManager.Instance.currentUsername;
+        bool amIWinner = (winnerName == myName);
+
         if (turnInfoText != null)
         {
-            turnInfoText.text = (winnerName == RoomManager.Instance.currentUsername) ?
+            turnInfoText.text = amIWinner ?
                 "<color=yellow>★ BẠN LÀ NGƯỜI CHIẾN THẮNG! ★</color>" :
                 $"<color=green>{winnerName} đã chiến thắng!</color>";
         }
 
-        // Hiện Panel Victory
         if (victoryPanel != null)
         {
-            Panel_GamePlay.SetActive(false);
+            if (Panel_GamePlay != null) Panel_GamePlay.SetActive(false);
+
             victoryPanel.SetActive(true);
+
             if (winnerNameText != null)
             {
-                winnerNameText.text = (winnerName == RoomManager.Instance.currentUsername) ?
-                    "<color=yellow>BẠN ĐÃ CHIẾN THẮNG! </color>" :
-                    $"<color=yellow>{winnerName}   ĐÃ CHIẾN THẮNG!</color>";
+                winnerNameText.text = amIWinner ?
+                    "<color=yellow>BẠN ĐÃ CHIẾN THẮNG!</color>" :
+                    $"<color=yellow>{winnerName} ĐÃ CHIẾN THẮNG!</color>";
             }
         }
     }
 
     public void ReturnToLoadRoom()
     {
-        // Xóa ID phòng hiện tại để tránh lỗi logic khi vào lại
-        if (RoomManager.Instance != null)
-        {
-            // RoomManager.Instance.currentRoomID = ""; // Tùy chọn nếu muốn reset hoàn toàn
-        }
+        // Quay lại màn hình chọn phòng
         SceneManager.LoadScene("LoadRoomScene");
     }
 
     private void AddPointToWinnerUID(string winnerUsername)
     {
+        // Tìm UID dựa trên Username để cộng điểm (Score)
         usersRef.GetValueAsync().ContinueWithOnMainThread(task => {
             if (task.IsFaulted || task.IsCanceled) return;
 
@@ -234,7 +252,7 @@ public class OnlineGameLogic : MonoBehaviour
                     return TransactionResult.Success(mutableData);
                 }).ContinueWithOnMainThread(t => {
                     if (t.IsCompleted)
-                        Debug.Log($"<color=cyan>Đã cộng 1 điểm cho {winnerUsername} (UID: {targetUID})</color>");
+                        Debug.Log($"<color=cyan>[Firebase] Đã cộng 1 điểm cho {winnerUsername}</color>");
                 });
             }
         });
@@ -252,19 +270,23 @@ public class OnlineGameLogic : MonoBehaviour
 
         bool isActivePlayerAlive = playerLifeStatus.ContainsKey(activePlayer) ? playerLifeStatus[activePlayer] : true;
 
+        // Cập nhật text trạng thái lượt
         if (turnInfoText != null)
         {
             if (!isActivePlayerAlive)
-                turnInfoText.text = $"<color=red>{activePlayer} đã bay màu.</color>";
+                turnInfoText.text = $"<color=red>{activePlayer} đã bị loại.</color>";
             else if (isWaitingForDefuse)
-                turnInfoText.text = isMe ? "<color=red>⚠ BẠN DÍNH BOM! ⚠</color>" : $"<color=orange>{activePlayer} đang gỡ bom...</color>";
+                turnInfoText.text = isMe ? "<color=red>⚠ BẠN DÍNH BOM! GỠ NGAY! ⚠</color>" : $"<color=orange>{activePlayer} đang gỡ bom...</color>";
             else
                 turnInfoText.text = isMe ? "<color=yellow>LƯỢT CỦA BẠN</color>" : $"Lượt của: {activePlayer}";
         }
 
+        // Cập nhật trạng thái nút "Đánh bài"
         if (playCardButton != null)
         {
             bool amIAlive = playerLifeStatus.ContainsKey(myName) ? playerLifeStatus[myName] : true;
+
+            // Nếu không phải lượt của mình hoặc mình đã chết thì tắt nút
             if (!isMe || !amIAlive)
             {
                 playCardButton.interactable = false;
@@ -272,9 +294,13 @@ public class OnlineGameLogic : MonoBehaviour
             else
             {
                 var selected = OnlineCardController.SelectedCard;
-                if (selected == null) playCardButton.interactable = false;
+                if (selected == null)
+                {
+                    playCardButton.interactable = false;
+                }
                 else
                 {
+                    // Nếu đang dính bom, chỉ cho phép nhấn nút nếu đang chọn lá Defuse
                     if (isWaitingForDefuse)
                         playCardButton.interactable = (selected.cardType == DrawPileManager.CardType.Defuse);
                     else
