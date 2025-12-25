@@ -23,7 +23,7 @@ public class OnlineDrawManager : MonoBehaviour
 
     [Header("--- Game Config ---")]
     public int cardsPerPlayer = 4;
-    public float firebaseResponseTimeout = 3.5f; // Thời gian tối đa chờ Firebase phản hồi
+    public float firebaseResponseTimeout = 3.5f;
 
     [Header("--- Game State ---")]
     public int currentTurnIndex = 0;
@@ -34,6 +34,7 @@ public class OnlineDrawManager : MonoBehaviour
     private float lastClickTime = 0f;
     private const float DOUBLE_CLICK_THRESHOLD = 0.3f;
     private Coroutine timeoutCoroutine;
+    private bool isListeningToActions = false;
 
     void Awake() => Instance = this;
 
@@ -66,42 +67,55 @@ public class OnlineDrawManager : MonoBehaviour
         string roomID = RoomManager.Instance.currentRoomID;
         roomRef = FirebaseManager.Instance.Database.RootReference.Child("rooms").Child(roomID);
 
+        // Đợi một chút để đảm bảo Firebase đã sẵn sàng trước khi lắng nghe
+        yield return new WaitForSeconds(0.2f);
+
         List<string> players = RoomManager.Instance.currentRoomPlayers;
         if (players != null && players.Count > 0)
         {
             isHost = (RoomManager.Instance.currentUsername == players[0]);
         }
 
-        if (isHost && DrawPileManager.Instance != null)
-        {
-            StartCoroutine(HostStartGameSequence(players));
-        }
-
+        // Đăng ký lắng nghe TRƯỚC khi Host chia bài
         ListenToGameState();
         ListenForVisualActions();
+
+        if (isHost && DrawPileManager.Instance != null)
+        {
+            // Host đợi thêm 1 giây để các máy Client kịp vào Scene và đăng ký Listener
+            yield return new WaitForSeconds(1.0f);
+            StartCoroutine(HostStartGameSequence(players));
+        }
     }
 
     private IEnumerator HostStartGameSequence(List<string> players)
     {
+        // Xóa các actions cũ nếu có để tránh xung đột bài cũ
+        yield return roomRef.Child("actions").RemoveValueAsync();
+
         DrawPileManager.Instance.PrepareSafeDeck(players.Count);
 
         foreach (string playerName in players)
         {
+            // Tặng mỗi người 1 lá Defuse mặc định
             SendInitialConfirmedCard(playerName, DrawPileManager.CardType.Defuse.ToString());
             yield return new WaitForSeconds(0.2f);
 
+            // Chia thêm số lá bài theo cấu hình
             for (int i = 0; i < cardsPerPlayer; i++)
             {
                 DrawPileManager.CardType randomCard = DrawPileManager.Instance.DrawCardData();
                 SendInitialConfirmedCard(playerName, randomCard.ToString());
-                yield return new WaitForSeconds(0.15f);
+                yield return new WaitForSeconds(0.15f); // Delay nhỏ để tránh spam Firebase
             }
         }
 
         DrawPileManager.Instance.AddExplodingKittens();
         UpdateDeckToFirebaseFromManager();
+
         roomRef.Child("gameData/currentTurnIndex").SetValueAsync(0);
         roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
+        Debug.Log("<color=cyan>Host đã chia bài xong cho tất cả người chơi.</color>");
     }
 
     private void SendInitialConfirmedCard(string receiver, string cardName)
@@ -110,11 +124,15 @@ public class OnlineDrawManager : MonoBehaviour
         result["type"] = "DRAW_CONFIRMED";
         result["target"] = receiver;
         result["cardType"] = cardName;
+        result["timestamp"] = ServerValue.Timestamp; // Thêm timestamp để đảm bảo thứ tự
         roomRef.Child("actions").Push().SetValueAsync(result);
     }
 
     private void ListenForVisualActions()
     {
+        if (isListeningToActions) return;
+        isListeningToActions = true;
+
         roomRef.Child("actions").ChildAdded += (s, e) => {
             if (!e.Snapshot.Exists) return;
             var data = e.Snapshot.Value as Dictionary<string, object>;
@@ -130,12 +148,13 @@ public class OnlineDrawManager : MonoBehaviour
 
                     if (target == RoomManager.Instance.currentUsername)
                     {
-                        // Thành công: Hủy timeout và mở khóa
                         StopWaitingFirebase();
                         SpawnCardToHand(cardName);
+                        Debug.Log($"<color=green>Đã nhận bài: {cardName}</color>");
                     }
                     else if (!string.IsNullOrEmpty(target))
                     {
+                        // Hiển thị lá bài úp cho đối thủ
                         SpawnCardBackForOpponent(target);
                     }
                 }
@@ -143,9 +162,8 @@ public class OnlineDrawManager : MonoBehaviour
                 {
                     if (data.ContainsKey("target") && data["target"].ToString() == RoomManager.Instance.currentUsername)
                     {
-                        // Dính bom: Hủy timeout và mở khóa để xử lý gỡ bom
                         StopWaitingFirebase();
-                        Debug.Log("Đã dính bom, mở khóa trạng thái chờ Firebase.");
+                        Debug.Log("<color=red>Dính bom!</color>");
                     }
                 }
             });
@@ -219,7 +237,6 @@ public class OnlineDrawManager : MonoBehaviour
 
         if (isWaitingForFirebase || isWaitingForDefuse)
         {
-            Debug.Log($"Không thể rút: WaitingFirebase={isWaitingForFirebase}, WaitingDefuse={isWaitingForDefuse}");
             return;
         }
 
@@ -234,8 +251,6 @@ public class OnlineDrawManager : MonoBehaviour
                 if (r.gameObject.name == "DrawPileDeck")
                 {
                     isWaitingForFirebase = true;
-
-                    // Kích hoạt cơ chế chống kẹt (Timeout)
                     if (timeoutCoroutine != null) StopCoroutine(timeoutCoroutine);
                     timeoutCoroutine = StartCoroutine(StartFirebaseTimeout());
 
@@ -257,13 +272,17 @@ public class OnlineDrawManager : MonoBehaviour
             foreach (var p in cardPrefabs)
             {
                 if (p == null) continue;
-                CardController cc = p.GetComponent<CardController>();
+                // Lưu ý: Đảm bảo Prefab bài của bạn có OnlineCardController hoặc CardController tương ứng
+                var cc = p.GetComponent<OnlineCardController>();
+                if (cc == null) cc = p.GetComponentInChildren<OnlineCardController>();
+
                 if (cc != null && cc.cardType == type) { selected = p; break; }
             }
 
             if (selected != null && playerHandArea != null)
             {
-                Instantiate(selected, playerHandArea);
+                GameObject card = Instantiate(selected, playerHandArea);
+                card.name = cardName + "_" + Guid.NewGuid().ToString().Substring(0, 4);
             }
         }
     }
@@ -313,10 +332,17 @@ public class OnlineDrawManager : MonoBehaviour
                 bool waiting = (bool)e.Snapshot.Value;
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
                     isWaitingForDefuse = waiting;
-                    // Khi trạng thái gỡ bom kết thúc, đảm bảo các biến chờ cũng được reset
                     if (!waiting) StopWaitingFirebase();
                 });
             }
         };
+    }
+
+    private void OnDestroy()
+    {
+        if (roomRef != null)
+        {
+            roomRef.Child("actions").ChildAdded -= (s, e) => { };
+        }
     }
 }
