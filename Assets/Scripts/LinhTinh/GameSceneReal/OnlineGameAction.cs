@@ -4,6 +4,7 @@ using Firebase.Extensions;
 using System.Collections.Generic;
 using System;
 using UnityEngine.UI;
+using TMPro; // Thêm namespace cho TextMeshPro
 
 public class OnlineGameActionManager : MonoBehaviour
 {
@@ -15,7 +16,11 @@ public class OnlineGameActionManager : MonoBehaviour
     public Image[] futureCardSlots;
     public Image discardPileDisplay;
     public List<CardVisualData> cardVisuals;
-    public Text bombTimerText; // Kéo thả Text UI hiển thị đếm ngược (Vd: "Bom nổ sau: 5s")
+    public TextMeshProUGUI bombTimerText; // Đã đổi sang TextMeshPro
+
+    [Header("--- THỐNG KÊ BỘ BÀI (NEW) ---")]
+    public TextMeshProUGUI deckCountText;   // Hiển thị: "Bài còn lại: X"
+    public TextMeshProUGUI bombChanceText;  // Hiển thị: "Tỉ lệ bom: X%"
 
     [Header("--- TRẠNG THÁI VÒNG CHƠI ---")]
     public int turnsToDraw = 1;
@@ -23,7 +28,7 @@ public class OnlineGameActionManager : MonoBehaviour
     private string roomID;
     private bool isLocalProcessing = false;
 
-    private Coroutine bombCountdownCoroutine; // Lưu Coroutine để hủy khi cần
+    private Coroutine bombCountdownCoroutine;
 
     [Serializable]
     public struct CardVisualData
@@ -39,6 +44,11 @@ public class OnlineGameActionManager : MonoBehaviour
         if (seeFuturePanel != null) seeFuturePanel.SetActive(false);
         if (discardPileDisplay != null) discardPileDisplay.gameObject.SetActive(false);
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
+
+        // Khởi tạo Text thống kê
+        if (deckCountText != null) deckCountText.text = "Bài còn lại: --";
+        if (bombChanceText != null) bombChanceText.text = "Tỉ lệ bom: --%";
+
         StartCoroutine(InitializeFirebase());
     }
 
@@ -53,7 +63,49 @@ public class OnlineGameActionManager : MonoBehaviour
         ListenForGameActions();
         ListenForTurnData();
         ListenForDefuseStatus();
+        ListenForDeckStats(); // Lắng nghe bộ bài để cập nhật số lượng và tỉ lệ
     }
+
+    // ================================================================
+    // LOGIC TÍNH TOÁN TỈ LỆ BOM VÀ SỐ LƯỢNG BÀI
+    // ================================================================
+    private void ListenForDeckStats()
+    {
+        roomRef.Child("gameData").Child("drawPile").ValueChanged += (s, e) => {
+            int totalCards = 0;
+            int bombCards = 0;
+
+            if (e.Snapshot.Exists)
+            {
+                foreach (var cardSnap in e.Snapshot.Children)
+                {
+                    totalCards++;
+                    if (cardSnap.Value.ToString() == DrawPileManager.CardType.Explode.ToString())
+                    {
+                        bombCards++;
+                    }
+                }
+            }
+
+            float chance = totalCards > 0 ? ((float)bombCards / totalCards) * 100f : 0f;
+            int roundedChance = Mathf.CeilToInt(chance);
+
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (deckCountText != null)
+                    deckCountText.text = $"Bài còn lại: <color=#FFD700>{totalCards}</color>";
+
+                if (bombChanceText != null)
+                {
+                    bombChanceText.text = $"Tỉ lệ bom: <color=#FF4500>{roundedChance}%</color>";
+                    bombChanceText.color = roundedChance > 40 ? Color.red : Color.white;
+                }
+            });
+        };
+    }
+
+    // ================================================================
+    // GỬI LỆNH TỪ NGƯỜI CHƠI
+    // ================================================================
 
     private bool CheckIfItIsMyTurn()
     {
@@ -65,10 +117,6 @@ public class OnlineGameActionManager : MonoBehaviour
         return players[currentTurnIndex] == myName;
     }
 
-    // ================================================================
-    // PHẦN 1: GỬI LỆNH TỪ NGƯỜI CHƠI
-    // ================================================================
-
     public void RequestPlayCard(DrawPileManager.CardType cardType, string cardObjectID)
     {
         if (!CheckIfItIsMyTurn() || isLocalProcessing) return;
@@ -79,7 +127,6 @@ public class OnlineGameActionManager : MonoBehaviour
             return;
         }
 
-        // Nếu đánh Defuse thành công, dừng đếm ngược ngay lập tức
         if (cardType == DrawPileManager.CardType.Defuse && bombCountdownCoroutine != null)
         {
             StopCoroutine(bombCountdownCoroutine);
@@ -98,12 +145,7 @@ public class OnlineGameActionManager : MonoBehaviour
     public void RequestDrawCard()
     {
         if (!CheckIfItIsMyTurn() || isLocalProcessing) return;
-
-        if (isWaitingForDefuse)
-        {
-            Debug.LogWarning("Phải gỡ bom trước khi rút bài!");
-            return;
-        }
+        if (isWaitingForDefuse) return;
 
         isLocalProcessing = true;
         Dictionary<string, object> action = new Dictionary<string, object>();
@@ -117,9 +159,7 @@ public class OnlineGameActionManager : MonoBehaviour
 
     public void RequestExplode()
     {
-        // Chỉ gửi yêu cầu nổ nếu thực sự đang trong trạng thái chờ Defuse
         if (!isWaitingForDefuse) return;
-
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
 
         Dictionary<string, object> action = new Dictionary<string, object>();
@@ -129,7 +169,7 @@ public class OnlineGameActionManager : MonoBehaviour
     }
 
     // ================================================================
-    // PHẦN 2: LẮNG NGHE VÀ XỬ LÝ
+    // LẮNG NGHE VÀ XỬ LÝ (HOST & CLIENT)
     // ================================================================
 
     private void ListenForGameActions()
@@ -170,15 +210,12 @@ public class OnlineGameActionManager : MonoBehaviour
             case "BOMB_TRAPPED":
                 if (data["target"].ToString() == RoomManager.Instance.currentUsername)
                 {
-                    Debug.Log("<color=red>BẠN DÍNH BOM! HÃY DÙNG LÁ DEFUSE TRONG 5 GIÂY!</color>");
-                    // Bắt đầu đếm ngược 5 giây cho local player
                     if (bombCountdownCoroutine != null) StopCoroutine(bombCountdownCoroutine);
                     bombCountdownCoroutine = StartCoroutine(BombCountdownTimer(5f));
                 }
                 break;
 
             case "PLAYER_EXPLODED":
-                Debug.Log($"<color=black>{sender} đã nổ tung!</color>");
                 if (OnlineDrawManager.Instance.isHost) Host_HandlePlayerExploded(sender);
                 break;
 
@@ -200,20 +237,16 @@ public class OnlineGameActionManager : MonoBehaviour
 
         while (remaining > 0)
         {
-            if (bombTimerText != null) bombTimerText.text = $"BẠN DÍNH BOM! GỠ TRONG: {Mathf.CeilToInt(remaining)}s";
+            if (bombTimerText != null) bombTimerText.text = $"BẠN DÍNH BOM! GỠ TRONG: <color=yellow>{Mathf.CeilToInt(remaining)}s</color>";
             yield return new WaitForSeconds(1f);
             remaining -= 1f;
-
-            // Nếu trạng thái đã được gỡ (bởi lá bài Defuse) thì thoát
             if (!isWaitingForDefuse) break;
         }
 
         if (isWaitingForDefuse)
         {
-            Debug.Log("<color=red>HẾT GIỜ! BẠN ĐÃ NỔ!</color>");
             RequestExplode();
         }
-
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
     }
 
@@ -236,7 +269,7 @@ public class OnlineGameActionManager : MonoBehaviour
     }
 
     // ================================================================
-    // PHẦN 3: LOGIC DÀNH RIÊNG CHO HOST
+    // LOGIC DÀNH RIÊNG CHO HOST
     // ================================================================
 
     private void Host_ProcessDraw(string player)
@@ -250,7 +283,6 @@ public class OnlineGameActionManager : MonoBehaviour
             res["type"] = "BOMB_TRAPPED";
             res["target"] = player;
             roomRef.Child("actions").Push().SetValueAsync(res);
-
             roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(true);
         }
         else
@@ -288,7 +320,6 @@ public class OnlineGameActionManager : MonoBehaviour
     private void HandleEndTurnLogic(bool isAttackAction = false)
     {
         if (!OnlineDrawManager.Instance.isHost) return;
-
         int playersCount = RoomManager.Instance.currentRoomPlayers.Count;
         int nextTurn;
 
@@ -299,7 +330,6 @@ public class OnlineGameActionManager : MonoBehaviour
         }
         else
         {
-            // Tạm thời chuyển lượt đơn giản, OnlineGameLogic sẽ xử lý skip người chơi dead tốt hơn
             nextTurn = (OnlineDrawManager.Instance.currentTurnIndex + 1) % playersCount;
             turnsToDraw = isAttackAction ? 2 : 1;
         }
@@ -311,17 +341,12 @@ public class OnlineGameActionManager : MonoBehaviour
     private void ListenForDefuseStatus()
     {
         roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                if (e.Snapshot.Exists)
-                {
-                    isWaitingForDefuse = (bool)e.Snapshot.Value;
-                    // Nếu trạng thái đổi sang false (đã gỡ xong), ẩn text UI nếu còn hiện
-                    if (!isWaitingForDefuse && bombTimerText != null)
-                        bombTimerText.gameObject.SetActive(false);
-                }
-                else
-                    isWaitingForDefuse = false;
-            });
+            if (e.Snapshot.Exists)
+            {
+                isWaitingForDefuse = (bool)e.Snapshot.Value;
+                if (!isWaitingForDefuse && bombTimerText != null)
+                    bombTimerText.gameObject.SetActive(false);
+            }
         };
     }
 
@@ -344,12 +369,25 @@ public class OnlineGameActionManager : MonoBehaviour
         DrawPileManager.CardType bottomCard = DrawPileManager.Instance.DrawBottomCardData();
         SyncDeckAfterAction();
 
-        Dictionary<string, object> result = new Dictionary<string, object>();
-        result["type"] = "DRAW_CONFIRMED";
-        result["target"] = receiver;
-        result["cardType"] = bottomCard.ToString();
+        // BUG FIX: Kiểm tra nếu lá bài dưới đáy là bom
+        if (bottomCard == DrawPileManager.CardType.Explode)
+        {
+            Dictionary<string, object> res = new Dictionary<string, object>();
+            res["type"] = "BOMB_TRAPPED";
+            res["target"] = receiver;
+            roomRef.Child("actions").Push().SetValueAsync(res);
+            roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(true);
+            // KHÔNG gọi HandleEndTurnLogic() vì người chơi cần gỡ bom
+        }
+        else
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            result["type"] = "DRAW_CONFIRMED";
+            result["target"] = receiver;
+            result["cardType"] = bottomCard.ToString();
 
-        roomRef.Child("actions").Push().SetValueAsync(result).ContinueWithOnMainThread(t => HandleEndTurnLogic());
+            roomRef.Child("actions").Push().SetValueAsync(result).ContinueWithOnMainThread(t => HandleEndTurnLogic());
+        }
     }
 
     private void ListenForTurnData()
