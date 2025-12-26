@@ -27,6 +27,24 @@ public class OnlineEffectManager : MonoBehaviour
 
     void Awake() => Instance = this;
 
+    private void SpawnEffect(EffectData data, Vector3 position)
+    {
+        // Tạo hiệu ứng
+        GameObject eff = Instantiate(data.prefab, transform);
+
+        // SỬA TẠI ĐÂY: Sử dụng .position thay vì .localPosition để khớp với tọa độ các Spot
+        eff.transform.position = position;
+
+        // Đảm bảo Z = 0 để không bị Camera che mất (do hiệu ứng thường là 2D/UI)
+        Vector3 currentPos = eff.transform.localPosition;
+        eff.transform.localPosition = new Vector3(currentPos.x, currentPos.y, 0);
+
+        // Cố định Scale
+        eff.transform.localScale = Vector3.one;
+
+        Destroy(eff, data.lifeTime);
+    }
+
     public void PlayEffect(DrawPileManager.CardType type, string senderName)
     {
         EffectData data = GetEffectDataByType(type);
@@ -37,30 +55,32 @@ public class OnlineEffectManager : MonoBehaviour
         if (type == DrawPileManager.CardType.Attack)
         {
             int victimViewIdx = GetNextAlivePlayerViewIndex(senderName);
+            // Lấy tọa độ World của Spot nạn nhân
             spawnPos = GetPositionByViewIndex(victimViewIdx);
         }
         else if (type == DrawPileManager.CardType.Shuffle)
         {
-            // Nếu drawPileTransform là UI, dùng localPosition, nếu là Object 3D dùng position
-            spawnPos = drawPileTransform != null ? drawPileTransform.localPosition : Vector3.zero;
+            // Lấy tọa độ World của chồng bài
+            spawnPos = drawPileTransform != null ? drawPileTransform.position : Vector3.zero;
+        }
+        else if (type == DrawPileManager.CardType.Explode)
+        {
+            // Hiệu ứng nổ cũng nên xuất hiện tại vị trí người bị nổ
+            int senderViewIdx = GetViewIndexByPlayerName(senderName);
+            spawnPos = GetPositionByViewIndex(senderViewIdx);
         }
 
         SpawnEffect(data, spawnPos);
     }
 
-    private void SpawnEffect(EffectData data, Vector3 position)
+    // Hàm bổ trợ để tìm ViewIndex của một người chơi bất kỳ qua tên
+    private int GetViewIndexByPlayerName(string playerName)
     {
-        // Tạo hiệu ứng và đặt nó làm con của Manager này
-        GameObject eff = Instantiate(data.prefab, transform);
-
-        // Đặt vị trí
-        eff.transform.localPosition = position;
-
-        // CỐ ĐỊNH SCALE: Ép Scale về (1, 1, 1) để không bị ảnh hưởng bởi cha
-        eff.transform.localScale = Vector3.one;
-
-        // Tự hủy sau thời gian quy định
-        Destroy(eff, data.lifeTime);
+        var players = RoomManager.Instance.currentRoomPlayers;
+        int absIdx = players.IndexOf(playerName);
+        int myAbsIdx = players.IndexOf(RoomManager.Instance.currentUsername);
+        int n = players.Count;
+        return (absIdx - myAbsIdx + n) % n;
     }
 
     private EffectData GetEffectDataByType(DrawPileManager.CardType type)
