@@ -197,6 +197,8 @@ public class OnlineGameActionManager : MonoBehaviour
                     UpdateDiscardPileVisual(cardType);
                     ShowCardPlayedInDiscardPile(cardType);
                     // Chỉ Host mới thực thi logic bài, Client chỉ xem Visual
+                    OnlineEffectManager.Instance.PlayEffect(cardType, sender);
+
                     if (OnlineDrawManager.Instance.isHost)
                         ExecuteCardLogic(cardType, sender);
                 }
@@ -216,6 +218,7 @@ public class OnlineGameActionManager : MonoBehaviour
                 break;
 
             case "PLAYER_EXPLODED":
+                OnlineEffectManager.Instance.PlayEffect(DrawPileManager.CardType.Explode, sender);
                 if (OnlineDrawManager.Instance.isHost) Host_HandlePlayerExploded(sender);
                 break;
 
