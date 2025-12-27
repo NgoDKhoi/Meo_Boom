@@ -437,7 +437,7 @@ public class OnlineGameActionManager : MonoBehaviour
             else futureCardSlots[i].gameObject.SetActive(false);
         }
         CancelInvoke("HideSeeFutureUI");
-        Invoke("HideSeeFutureUI", 5f);
+        Invoke("HideSeeFutureUI", 7f);
     }
 
     public void HideSeeFutureUI() => seeFuturePanel.SetActive(false);

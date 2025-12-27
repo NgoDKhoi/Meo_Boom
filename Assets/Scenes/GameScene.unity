@@ -1346,25 +1346,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OnlineEffectManager
   attackEff:
-    prefab: {fileID: 5994458097385215752, guid: ff2957983e872034ebc71c5b523ef406, type: 3}
+    prefab: {fileID: 5994458097385215752, guid: 310e6498a2c04974bbe04bd4c7337a31, type: 3}
     lifeTime: 1
   defuseEff:
-    prefab: {fileID: 984563606955094092, guid: 07eb62691a9a43547a2f5e1ff619354b, type: 3}
+    prefab: {fileID: 984563606955094092, guid: ba586a3aa8d7c3a4d9a8d4a0d5134301, type: 3}
     lifeTime: 1.6
   drawBottomEff:
-    prefab: {fileID: 8416661452022423339, guid: 76d472b15a6da7a42b643ec466b6fa79, type: 3}
+    prefab: {fileID: 8416661452022423339, guid: 1e0a598768f5da443a4bffdaf04a4359, type: 3}
     lifeTime: 1
   explodeMaster:
-    prefab: {fileID: 5705259250422523252, guid: d887658f8241cab40a79e59ac908fdd1, type: 3}
+    prefab: {fileID: 5705259250422523252, guid: 4b4b640b1f9d4234ca95c24d039d3718, type: 3}
     lifeTime: 2.5
   seeFutureEff:
-    prefab: {fileID: 1984646259280761391, guid: 61fadf2850fc09d468b927db0ac5fab9, type: 3}
+    prefab: {fileID: 1984646259280761391, guid: baaf6d7d0f99f2149b895135fb528238, type: 3}
     lifeTime: 2
   shuffleEff:
-    prefab: {fileID: 247237600805506018, guid: 4f20d10337ed66f4ea22f9ae0ca1d12f, type: 3}
+    prefab: {fileID: 247237600805506018, guid: d9356fc887fc50345aaed5cbb2582b7e, type: 3}
     lifeTime: 1
   skipEff:
-    prefab: {fileID: 1079388514993842112, guid: 948e300d41ae51242ab1036c2cc263ad, type: 3}
+    prefab: {fileID: 1079388514993842112, guid: 1c8611c5f9ed04a4586c98dc74a197d5, type: 3}
     lifeTime: 0.75
   drawPileTransform: {fileID: 1059621775}
   gameSceneManager: {fileID: 1743826567}

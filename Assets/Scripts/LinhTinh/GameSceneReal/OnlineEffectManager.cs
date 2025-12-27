@@ -29,18 +29,17 @@ public class OnlineEffectManager : MonoBehaviour
 
     private void SpawnEffect(EffectData data, Vector3 position)
     {
-        // Tạo hiệu ứng
-        GameObject eff = Instantiate(data.prefab, transform);
+        // 1. Tạo hiệu ứng nhưng KHÔNG gán cha ngay (để giữ Scale gốc của Prefab)
+        // Hoặc gán cha nhưng dùng tham số thứ 3 là false để không bị nhảy Scale
+        GameObject eff = Instantiate(data.prefab, position, Quaternion.identity, transform);
 
-        // SỬA TẠI ĐÂY: Sử dụng .position thay vì .localPosition để khớp với tọa độ các Spot
-        eff.transform.position = position;
+        // 2. GIẢI PHÁP: Lấy Scale gốc từ Prefab data thay vì ép về Vector3.one
+        // Nếu bạn muốn nó giữ y hệt những gì bạn chỉnh trong Prefab:
+        eff.transform.localScale = data.prefab.transform.localScale;
 
-        // Đảm bảo Z = 0 để không bị Camera che mất (do hiệu ứng thường là 2D/UI)
-        Vector3 currentPos = eff.transform.localPosition;
-        eff.transform.localPosition = new Vector3(currentPos.x, currentPos.y, 0);
-
-        // Cố định Scale
-        eff.transform.localScale = Vector3.one;
+        // 3. Đảm bảo Z local = 0 để hiện trên UI
+        Vector3 currentLocalPos = eff.transform.localPosition;
+        eff.transform.localPosition = new Vector3(currentLocalPos.x, currentLocalPos.y, 0);
 
         Destroy(eff, data.lifeTime);
     }
