@@ -53,9 +53,7 @@ public class OnlineEffectManager : MonoBehaviour
 
         if (type == DrawPileManager.CardType.Attack)
         {
-            int victimViewIdx = GetNextAlivePlayerViewIndex(senderName);
-            // Lấy tọa độ World của Spot nạn nhân
-            spawnPos = GetPositionByViewIndex(victimViewIdx);
+            spawnPos = Vector3.zero;
         }
         else if (type == DrawPileManager.CardType.Shuffle)
         {
@@ -64,9 +62,7 @@ public class OnlineEffectManager : MonoBehaviour
         }
         else if (type == DrawPileManager.CardType.Explode)
         {
-            // Hiệu ứng nổ cũng nên xuất hiện tại vị trí người bị nổ
-            int senderViewIdx = GetViewIndexByPlayerName(senderName);
-            spawnPos = GetPositionByViewIndex(senderViewIdx);
+            spawnPos = Vector3.zero;
         }
 
         SpawnEffect(data, spawnPos);

@@ -18,29 +18,27 @@ public class ExplodeSequence : MonoBehaviour
 
     IEnumerator RunSequence()
     {
-        // 1. CHẠY ANIMATION DÂY CHÁY (Animation 1)
+        // 1. CHẠY ANIMATION DÂY CHÁY
         if (fusePrefab != null)
         {
-            // Vị trí/Scale đã được thiết lập trong Prefab
             GameObject fuseFX = Instantiate(fusePrefab, transform.position, Quaternion.identity, transform);
+        
+            // ÉP SCALE CỦA CON THEO CHA (Đảm bảo chắc chắn nó nhỏ)
+            fuseFX.transform.localScale = Vector3.one; 
+            // Vì đã là con của Master (0.25), nên gán localScale = 1 
+            // thì kích thước thực tế của nó sẽ là 0.25 so với thế giới.
 
-            // Tùy chọn: Đảm bảo EffectAnimation trên Prefab con cũng có duration là 1.0f 
-            // nếu bạn muốn nó tự hủy đúng thời gian.
-
-            // Chờ dây cháy hết
             yield return new WaitForSeconds(fuseDurationTime);
-
-            // (Không cần Destroy(fuseFX) nếu script EffectAnimation của nó tự hủy)
         }
 
-        // 2. CHẠY ANIMATION VỤ NỔ LỚN (Animation 2)
+        // 2. CHẠY ANIMATION VỤ NỔ LỚN
         if (explosionPrefab != null)
         {
             GameObject explosionFX = Instantiate(explosionPrefab, transform.position, Quaternion.identity, transform);
+        
+            // TƯƠNG TỰ VỚI VỤ NỔ
+            explosionFX.transform.localScale = Vector3.one; 
 
-            // Tùy chọn: Đảm bảo EffectAnimation trên Prefab con cũng có duration là 1.5f.
-
-            // Chờ vụ nổ kết thúc
             yield return new WaitForSeconds(explosionDurationTime);
         }
 
