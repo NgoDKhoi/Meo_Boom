@@ -32,7 +32,7 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
 
     void Update()
     {
-        // Tự động cập nhật trạng thái hiển thị dựa trên logic game
+        if (OnlineGameActionManager.Instance == null) return; // CHỐT CHẶN 1
         UpdateCardVisualState();
     }
 
@@ -67,6 +67,8 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (OnlineGameActionManager.Instance == null) return;
+        
         // KHÓA CLICK: Nếu đang dính bom mà click vào bài thường thì không xử lý
         if (OnlineGameActionManager.Instance != null && OnlineGameActionManager.Instance.isWaitingForDefuse)
         {
@@ -99,6 +101,9 @@ public class OnlineCardController : MonoBehaviour, IPointerClickHandler
 
     private void HandleSelection()
     {
+        // Nếu không phải game Online, bỏ qua click của script này
+        if (OnlineGameLogic.Instance == null) return;
+        
         // Chỉ cho phép chọn bài nếu đang trong lượt
         if (OnlineGameLogic.Instance != null && !OnlineGameLogic.Instance.IsMyTurn()) return;
 

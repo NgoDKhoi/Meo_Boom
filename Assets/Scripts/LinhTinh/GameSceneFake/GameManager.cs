@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using static DrawPileManager;
 using static GameManager;
+using UnityEngine.SceneManagement; // Thư viện để chuyển cảnh
 
 public class GameManager : MonoBehaviour
 {
@@ -1621,6 +1622,15 @@ public class GameManager : MonoBehaviour
             obj.position = Vector3.Lerp(start, target, time / duration);
             yield return null;
         }
+    }
+
+    public void OnBackToLobbyBtnClick()
+    {
+        // Reset lại trạng thái tĩnh nếu cần (ví dụ chọn bài)
+        CardController.selectedCard = null;
+    
+        // Load về scene phòng chờ
+        SceneManager.LoadScene("LoadRoomScene"); 
     }
     #endregion
 }
