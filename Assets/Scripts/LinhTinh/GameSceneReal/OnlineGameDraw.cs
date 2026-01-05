@@ -36,6 +36,14 @@ public class OnlineDrawManager : MonoBehaviour
     private Coroutine timeoutCoroutine;
     private bool isListeningToActions = false;
 
+    // Handshake variables
+    private bool hasReportedReady = false;
+
+    // Firebase Event Handlers (Dùng để Unsubscribe)
+    private EventHandler<ValueChangedEventArgs> turnIndexHandler;
+    private EventHandler<ValueChangedEventArgs> defuseStatusHandler;
+    private EventHandler<ChildChangedEventArgs> actionAddedHandler;
+
     void Awake() => Instance = this;
 
     void Start()
@@ -46,13 +54,6 @@ public class OnlineDrawManager : MonoBehaviour
     public bool IsMyTurn()
     {
         if (OnlineGameLogic.Instance != null) return OnlineGameLogic.Instance.IsMyTurn();
-
-        if (RoomManager.Instance != null && RoomManager.Instance.currentRoomPlayers != null)
-        {
-            if (currentTurnIndex < 0 || RoomManager.Instance.currentRoomPlayers.Count == 0) return false;
-            string currentTurnPlayer = RoomManager.Instance.currentRoomPlayers[currentTurnIndex % RoomManager.Instance.currentRoomPlayers.Count];
-            return currentTurnPlayer == RoomManager.Instance.currentUsername;
-        }
         return false;
     }
 
@@ -64,73 +65,124 @@ public class OnlineDrawManager : MonoBehaviour
         string roomID = RoomManager.Instance.currentRoomID;
         roomRef = FirebaseManager.Instance.Database.RootReference.Child("rooms").Child(roomID);
 
-        yield return new WaitForSeconds(0.3f);
-
+        // Xác định Host (Người chơi đầu tiên trong danh sách)
         List<string> players = RoomManager.Instance.currentRoomPlayers;
         if (players != null && players.Count > 0)
         {
             isHost = (RoomManager.Instance.currentUsername == players[0]);
         }
 
+        // Đăng ký lắng nghe các sự kiện game
         ListenToGameState();
         ListenForVisualActions();
 
-        if (isHost && DrawPileManager.Instance != null)
+        yield return new WaitForSeconds(0.5f);
+
+        // Báo cáo đã load xong scene và sẵn sàng nhận bài
+        ReportReady();
+
+        if (isHost)
         {
-            yield return new WaitForSeconds(2.0f);
-            StartCoroutine(HostStartGameSequence(players));
+            StartCoroutine(HostWaitForReadyAndStart(players));
         }
+    }
+
+    private void ReportReady()
+    {
+        if (hasReportedReady || roomRef == null) return;
+        string myName = RoomManager.Instance.currentUsername;
+
+        roomRef.Child("readyStatus").Child(myName).SetValueAsync(true).ContinueWithOnMainThread(t => {
+            hasReportedReady = true;
+            Debug.Log($"<color=green>[Handshake] {myName} đã sẵn sàng!</color>");
+        });
+    }
+
+    private IEnumerator HostWaitForReadyAndStart(List<string> players)
+    {
+        bool allReady = false;
+        while (!allReady)
+        {
+            var task = roomRef.Child("readyStatus").GetValueAsync();
+            yield return new WaitUntil(() => task.IsCompleted);
+
+            if (task.IsCompletedSuccessfully)
+            {
+                DataSnapshot snapshot = task.Result;
+                int readyCount = 0;
+                foreach (string p in players)
+                {
+                    if (snapshot.HasChild(p) && (bool)snapshot.Child(p).Value == true)
+                        readyCount++;
+                }
+
+                if (readyCount >= players.Count) allReady = true;
+                else yield return new WaitForSeconds(1.0f);
+            }
+            else yield return new WaitForSeconds(1.0f);
+        }
+
+        yield return StartCoroutine(HostStartGameSequence(players));
     }
 
     private IEnumerator HostStartGameSequence(List<string> players)
     {
-        var task = roomRef.Child("actions").RemoveValueAsync();
-        yield return new WaitUntil(() => task.IsCompleted);
+        // 1. Reset toàn bộ dữ liệu game cũ
+        yield return roomRef.Child("actions").RemoveValueAsync();
+        yield return roomRef.Child("playersStatus").RemoveValueAsync(); // THÊM MỚI: Reset trạng thái sống/chết
 
+        if (DrawPileManager.Instance == null) yield break;
+
+        // 2. Chuẩn bị bộ bài sạch (chưa có bom)
         DrawPileManager.Instance.PrepareSafeDeck(players.Count);
 
+        // 3. Chia bài cho từng người qua Firebase Action
         foreach (string playerName in players)
         {
-            SendInitialConfirmedCard(playerName, DrawPileManager.CardType.Defuse.ToString());
-            yield return new WaitForSeconds(0.25f);
+            // Reset trạng thái sống cho từng người chơi
+            roomRef.Child("playersStatus").Child(playerName).Child("isDead").SetValueAsync(false);
 
+            // Chia Defuse
+            SendInitialConfirmedCard(playerName, DrawPileManager.CardType.Defuse.ToString());
+            yield return new WaitForSeconds(0.2f);
+
+            // Chia bài ngẫu nhiên
             for (int i = 0; i < cardsPerPlayer; i++)
             {
                 DrawPileManager.CardType randomCard = DrawPileManager.Instance.DrawCardData();
                 SendInitialConfirmedCard(playerName, randomCard.ToString());
-                yield return new WaitForSeconds(0.2f);
+                yield return new WaitForSeconds(0.15f);
             }
         }
 
+        // 4. Thêm bom vào bộ bài và đồng bộ lên Firebase
         DrawPileManager.Instance.AddExplodingKittens();
         UpdateDeckToFirebaseFromManager();
 
+        // 5. Thiết lập trạng thái bắt đầu
         roomRef.Child("gameData/currentTurnIndex").SetValueAsync(0);
         roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
+        roomRef.Child("gameData/turnsToDraw").SetValueAsync(1);
 
-        Dictionary<string, object> startAction = new Dictionary<string, object>();
-        startAction["type"] = "GAME_START_SIGNAL";
-        roomRef.Child("actions").Push().SetValueAsync(startAction);
+        // 6. Tín hiệu bắt đầu game
+        roomRef.Child("actions").Push().Child("type").SetValueAsync("GAME_START_SIGNAL");
     }
 
-    // --- CÁC HÀM CẬP NHẬT FIREBASE CHO HOST ---
 
     public void UpdateDeckToFirebaseFromManager()
     {
         if (!isHost || DrawPileManager.Instance == null) return;
-
-        List<DrawPileManager.CardType> currentDeck = DrawPileManager.Instance.GetTopCards(DrawPileManager.Instance.GetRemainingCount());
+        List<DrawPileManager.CardType> currentDeck = DrawPileManager.Instance.GetFullDeckList();
         List<string> deckStr = new List<string>();
         foreach (var card in currentDeck) deckStr.Add(card.ToString());
-
         roomRef.Child("gameData/drawPile").SetValueAsync(deckStr);
     }
 
-    // Đã thêm lại hàm bị thiếu ở đây
     public void Host_InsertBombToFirebaseDeck()
     {
         if (!isHost) return;
 
+        // Lấy bộ bài hiện tại từ Firebase để đảm bảo tính nhất quán cao nhất
         roomRef.Child("gameData/drawPile").GetValueAsync().ContinueWithOnMainThread(task => {
             if (task.IsCompleted && task.Result.Exists)
             {
@@ -138,12 +190,24 @@ public class OnlineDrawManager : MonoBehaviour
                 List<string> currentDeck = new List<string>();
                 if (list != null) foreach (var item in list) currentDeck.Add(item.ToString());
 
-                // Chèn bom vào vị trí ngẫu nhiên trong bộ bài trên Firebase
+                // Chèn bom vào vị trí ngẫu nhiên
                 int randomIndex = UnityEngine.Random.Range(0, currentDeck.Count + 1);
-                currentDeck.Insert(randomIndex, "Explode"); // CardType.Explode.ToString()
+                currentDeck.Insert(randomIndex, DrawPileManager.CardType.Explode.ToString());
 
+                // Cập nhật lại lên Firebase
                 roomRef.Child("gameData/drawPile").SetValueAsync(currentDeck).ContinueWithOnMainThread(t => {
-                    Debug.Log("<color=orange>Host: Đã chèn bom trở lại bộ bài Firebase.</color>");
+                    // Sau khi cập nhật Deck, cập nhật luôn bộ bài của Host cục bộ để đồng bộ
+                    if (DrawPileManager.Instance != null)
+                    {
+                        List<DrawPileManager.CardType> newDeckTypes = new List<DrawPileManager.CardType>();
+                        foreach (string s in currentDeck)
+                        {
+                            if (Enum.TryParse(s, out DrawPileManager.CardType type))
+                                newDeckTypes.Add(type);
+                        }
+                        DrawPileManager.Instance.SyncDeck(newDeckTypes);
+                    }
+                    Debug.Log($"[Draw] Host đã nhét lại BOM vào vị trí: {randomIndex}");
                 });
             }
         });
@@ -151,11 +215,13 @@ public class OnlineDrawManager : MonoBehaviour
 
     private void SendInitialConfirmedCard(string receiver, string cardName)
     {
-        Dictionary<string, object> result = new Dictionary<string, object>();
-        result["type"] = "DRAW_CONFIRMED";
-        result["target"] = receiver;
-        result["cardType"] = cardName;
-        result["timestamp"] = ServerValue.Timestamp;
+        Dictionary<string, object> result = new Dictionary<string, object>
+        {
+            ["type"] = "DRAW_CONFIRMED",
+            ["target"] = receiver,
+            ["cardType"] = cardName,
+            ["timestamp"] = ServerValue.Timestamp
+        };
         roomRef.Child("actions").Push().SetValueAsync(result);
     }
 
@@ -164,7 +230,7 @@ public class OnlineDrawManager : MonoBehaviour
         if (isListeningToActions) return;
         isListeningToActions = true;
 
-        roomRef.Child("actions").ChildAdded += (s, e) => {
+        actionAddedHandler = (s, e) => {
             if (!e.Snapshot.Exists) return;
             var data = e.Snapshot.Value as Dictionary<string, object>;
             if (data == null) return;
@@ -190,12 +256,15 @@ public class OnlineDrawManager : MonoBehaviour
                 else if (type == "BOMB_TRAPPED")
                 {
                     if (data.ContainsKey("target") && data["target"].ToString() == RoomManager.Instance.currentUsername)
-                    {
                         StopWaitingFirebase();
-                    }
+                }
+                else if (type == "GAME_START_SIGNAL")
+                {
+                    UpdateTurnStatusUI();
                 }
             });
         };
+        roomRef.Child("actions").ChildAdded += actionAddedHandler;
     }
 
     private void StopWaitingFirebase()
@@ -211,10 +280,7 @@ public class OnlineDrawManager : MonoBehaviour
     private IEnumerator StartFirebaseTimeout()
     {
         yield return new WaitForSeconds(firebaseResponseTimeout);
-        if (isWaitingForFirebase)
-        {
-            isWaitingForFirebase = false;
-        }
+        isWaitingForFirebase = false;
         timeoutCoroutine = null;
     }
 
@@ -264,8 +330,7 @@ public class OnlineDrawManager : MonoBehaviour
             foreach (var p in cardPrefabs)
             {
                 if (p == null) continue;
-                var cc = p.GetComponent<OnlineCardController>();
-                if (cc == null) cc = p.GetComponentInChildren<OnlineCardController>();
+                var cc = p.GetComponent<OnlineCardController>() ?? p.GetComponentInChildren<OnlineCardController>();
                 if (cc != null && cc.cardType == type) { selected = p; break; }
             }
 
@@ -304,29 +369,83 @@ public class OnlineDrawManager : MonoBehaviour
 
     private void ListenToGameState()
     {
-        roomRef.Child("gameData/currentTurnIndex").ValueChanged += (s, e) => {
+        turnIndexHandler = (s, e) => {
             if (!e.Snapshot.Exists) return;
             int newIndex = Convert.ToInt32(e.Snapshot.Value);
-            UnityMainThreadDispatcher.Instance().Enqueue(() => { currentTurnIndex = newIndex; });
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                currentTurnIndex = newIndex;
+                UpdateTurnStatusUI();
+            });
         };
+        roomRef.Child("gameData/currentTurnIndex").ValueChanged += turnIndexHandler;
 
-        roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += (s, e) => {
+        defuseStatusHandler = (s, e) => {
             if (e.Snapshot.Exists)
             {
                 bool waiting = (bool)e.Snapshot.Value;
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
                     isWaitingForDefuse = waiting;
+                    UpdateTurnStatusUI(); // Cập nhật màu sắc UI khi gỡ bom
                     if (!waiting) StopWaitingFirebase();
                 });
             }
         };
+        roomRef.Child("gameData/isWaitingForDefuse").ValueChanged += defuseStatusHandler;
+    }
+
+    private void UpdateTurnStatusUI()
+    {
+        if (turnStatusText == null || RoomManager.Instance == null) return;
+
+        List<string> players = RoomManager.Instance.currentRoomPlayers;
+        if (players == null || players.Count == 0 || currentTurnIndex < 0) return;
+
+        string activePlayer = players[currentTurnIndex % players.Count];
+        bool isMe = (activePlayer == RoomManager.Instance.currentUsername);
+
+        // Kiểm tra xem người đang tới lượt có phải người đã chết không (để UI chính xác hơn)
+        bool isActivePlayerDead = false;
+        if (OnlineGameLogic.Instance != null && OnlineGameLogic.Instance.playerLifeStatus.ContainsKey(activePlayer))
+        {
+            isActivePlayerDead = !OnlineGameLogic.Instance.playerLifeStatus[activePlayer];
+        }
+
+        if (isActivePlayerDead)
+        {
+            turnStatusText.text = $"Đang chuyển lượt từ {activePlayer}...";
+            turnStatusText.color = Color.gray;
+            return;
+        }
+
+        if (isWaitingForDefuse)
+        {
+            turnStatusText.text = isMe ? "<color=red> BẠN ĐANG GỠ BOM! </color>" : $"<color=orange>{activePlayer} đang gỡ bom...</color>";
+        }
+        else
+        {
+            if (isMe)
+            {
+                turnStatusText.text = "Lượt của bạn!";
+                turnStatusText.color = Color.yellow;
+            }
+            else
+            {
+                turnStatusText.text = "Lượt của: " + activePlayer;
+                turnStatusText.color = Color.white;
+            }
+        }
     }
 
     private void OnDestroy()
     {
         if (roomRef != null)
         {
-            roomRef.Child("actions").ChildAdded -= (s, e) => { };
+            roomRef.Child("gameData/currentTurnIndex").ValueChanged -= turnIndexHandler;
+            roomRef.Child("gameData/isWaitingForDefuse").ValueChanged -= defuseStatusHandler;
+            roomRef.Child("actions").ChildAdded -= actionAddedHandler;
+
+            if (RoomManager.Instance != null)
+                roomRef.Child("readyStatus").Child(RoomManager.Instance.currentUsername).RemoveValueAsync();
         }
     }
 }
