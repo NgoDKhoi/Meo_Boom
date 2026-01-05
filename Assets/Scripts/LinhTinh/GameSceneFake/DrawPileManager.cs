@@ -131,4 +131,14 @@ public class DrawPileManager : MonoBehaviour
 
     // Hàm kiểm tra số lượng bài còn lại
     public int GetRemainingCount() => drawPile.Count;
+    public List<CardType> GetFullDeckList()
+    {
+        return drawPile;
+    }
+    public void SyncDeck(List<CardType> newDeck)
+    {
+        if (newDeck == null) return;
+        drawPile = new List<CardType>(newDeck);
+        Debug.Log($"[DrawPileManager] Đã đồng bộ bộ bài mới: {drawPile.Count} lá.");
+    }
 }
