@@ -186,7 +186,7 @@ public class OnlineGameActionManager : MonoBehaviour
                 {
                     // CẬP NHẬT HÌNH ẢNH LÊN BÀN CHO TẤT CẢ MỌI NGƯỜI
                     UpdateDiscardPileVisual(cardType);
-                    ShowCardPlayedInDiscardPile(cardType);
+                    // ShowCardPlayedInDiscardPile(cardType);
                     // Chỉ Host mới thực thi logic bài, Client chỉ xem Visual
                     OnlineEffectManager.Instance.PlayEffect(cardType, sender);
 
