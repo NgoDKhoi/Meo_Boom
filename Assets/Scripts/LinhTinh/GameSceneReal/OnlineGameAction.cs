@@ -14,11 +14,11 @@ public class OnlineGameActionManager : MonoBehaviour
     [Header("--- UI REFERENCES ---")]
     public GameObject seeFuturePanel;
     public Image[] futureCardSlots;
-    public Image discardPileDisplay;
+    public Image discardPileDisplay; // Đây là Image hiển thị lá bài vừa đánh trên bàn
     public List<CardVisualData> cardVisuals;
     public TextMeshProUGUI bombTimerText;
 
-    [Header("--- THỐNG KÊ BỘ BÀI (NEW) ---")]
+    [Header("--- THỐNG KÊ BỘ BÀI ---")]
     public TextMeshProUGUI deckCountText;
     public TextMeshProUGUI bombChanceText;
 
@@ -42,9 +42,14 @@ public class OnlineGameActionManager : MonoBehaviour
     void Start()
     {
         if (seeFuturePanel != null) seeFuturePanel.SetActive(false);
-        if (discardPileDisplay != null) discardPileDisplay.gameObject.SetActive(false);
-        if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
 
+        // Khởi tạo trạng thái ban đầu cho Discard Pile (Mộ bài trên bàn)
+        if (discardPileDisplay != null)
+        {
+            discardPileDisplay.gameObject.SetActive(false);
+        }
+
+        if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
         if (deckCountText != null) deckCountText.text = "Bài còn lại: --";
         if (bombChanceText != null) bombChanceText.text = "Tỉ lệ bom: --%";
 
@@ -65,9 +70,6 @@ public class OnlineGameActionManager : MonoBehaviour
         ListenForDeckStats();
     }
 
-    // ================================================================
-    // LOGIC TÍNH TOÁN TỈ LỆ BOM VÀ SỐ LƯỢNG BÀI (CHỈ BIẾT DỮ LIỆU CHUNG)
-    // ================================================================
     private void ListenForDeckStats()
     {
         roomRef.Child("gameData").Child("drawPile").ValueChanged += (s, e) => {
@@ -80,9 +82,7 @@ public class OnlineGameActionManager : MonoBehaviour
                 {
                     totalCards++;
                     if (cardSnap.Value.ToString() == DrawPileManager.CardType.Explode.ToString())
-                    {
                         bombCards++;
-                    }
                 }
             }
 
@@ -95,36 +95,23 @@ public class OnlineGameActionManager : MonoBehaviour
 
                 if (bombChanceText != null)
                 {
-                    bombChanceText.text = $"Tỉ lệ bom: <color=#FF4500>{roundedChance}%</color>";
-                    bombChanceText.color = roundedChance > 40 ? Color.red : Color.white;
+                    bombChanceText.text = $"Tỉ lệ bom: <color=#FFD700>{roundedChance}%</color>";
+                    bombChanceText.color = roundedChance > 40 ? Color.yellow : Color.white;
                 }
             });
         };
     }
 
     // ================================================================
-    // GỬI LỆNH TỪ NGƯỜI CHƠI (Hành động mù - không quan tâm bài người khác)
+    // GỬI LỆNH TỪ NGƯỜI CHƠI
     // ================================================================
-
-    private bool CheckIfItIsMyTurn()
-    {
-        if (OnlineDrawManager.Instance == null || RoomManager.Instance == null) return false;
-        List<string> players = RoomManager.Instance.currentRoomPlayers;
-        string myName = RoomManager.Instance.currentUsername;
-        int currentTurnIndex = OnlineDrawManager.Instance.currentTurnIndex;
-        if (players == null || currentTurnIndex < 0 || currentTurnIndex >= players.Count) return false;
-        return players[currentTurnIndex] == myName;
-    }
 
     public void RequestPlayCard(DrawPileManager.CardType cardType, string cardObjectID)
     {
-        if (!CheckIfItIsMyTurn() || isLocalProcessing) return;
+        if (OnlineGameLogic.Instance == null || !OnlineGameLogic.Instance.IsMyTurn() || isLocalProcessing) return;
+        if (isWaitingForDefuse && cardType != DrawPileManager.CardType.Defuse) return;
 
-        if (isWaitingForDefuse && cardType != DrawPileManager.CardType.Defuse)
-        {
-            Debug.Log("<color=orange>BẠN ĐANG DÍNH BOM! CHỈ CÓ THỂ ĐÁNH DEFUSE!</color>");
-            return;
-        }
+        isLocalProcessing = true;
 
         if (cardType == DrawPileManager.CardType.Defuse && bombCountdownCoroutine != null)
         {
@@ -132,43 +119,44 @@ public class OnlineGameActionManager : MonoBehaviour
             if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
         }
 
-        Dictionary<string, object> action = new Dictionary<string, object>();
-        action["type"] = "PLAY_ACTION";
-        action["sender"] = RoomManager.Instance.currentUsername;
-        action["cardType"] = cardType.ToString();
-        action["cardID"] = cardObjectID;
+        Dictionary<string, object> action = new Dictionary<string, object>
+        {
+            ["type"] = "PLAY_ACTION",
+            ["sender"] = RoomManager.Instance.currentUsername,
+            ["cardType"] = cardType.ToString(),
+            ["cardID"] = cardObjectID
+        };
 
-        roomRef.Child("actions").Push().SetValueAsync(action);
+        roomRef.Child("actions").Push().SetValueAsync(action).ContinueWithOnMainThread(t => isLocalProcessing = false);
     }
 
     public void RequestDrawCard()
     {
-        if (!CheckIfItIsMyTurn() || isLocalProcessing) return;
-        if (isWaitingForDefuse) return;
+        if (OnlineGameLogic.Instance == null || !OnlineGameLogic.Instance.IsMyTurn() || isLocalProcessing || isWaitingForDefuse) return;
 
         isLocalProcessing = true;
-        Dictionary<string, object> action = new Dictionary<string, object>();
-        action["type"] = "DRAW_REQUEST";
-        action["sender"] = RoomManager.Instance.currentUsername;
+        Dictionary<string, object> action = new Dictionary<string, object>
+        {
+            ["type"] = "DRAW_REQUEST",
+            ["sender"] = RoomManager.Instance.currentUsername
+        };
 
-        roomRef.Child("actions").Push().SetValueAsync(action).ContinueWithOnMainThread(t => {
-            isLocalProcessing = false;
-        });
+        roomRef.Child("actions").Push().SetValueAsync(action).ContinueWithOnMainThread(t => isLocalProcessing = false);
     }
 
     public void RequestExplode()
     {
         if (!isWaitingForDefuse) return;
-        if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
-
-        Dictionary<string, object> action = new Dictionary<string, object>();
-        action["type"] = "PLAYER_EXPLODED";
-        action["sender"] = RoomManager.Instance.currentUsername;
+        Dictionary<string, object> action = new Dictionary<string, object>
+        {
+            ["type"] = "PLAYER_EXPLODED",
+            ["sender"] = RoomManager.Instance.currentUsername
+        };
         roomRef.Child("actions").Push().SetValueAsync(action);
     }
 
     // ================================================================
-    // LẮNG NGHE VÀ XỬ LÝ (Sử dụng Action để cập nhật game thay vì State)
+    // LẮNG NGHE VÀ XỬ LÝ
     // ================================================================
 
     private void ListenForGameActions()
@@ -189,29 +177,30 @@ public class OnlineGameActionManager : MonoBehaviour
 
     private void HandleIncomingAction(string type, string sender, Dictionary<string, object> data, DataSnapshot snapshot)
     {
+        if (OnlineGameLogic.Instance != null && OnlineGameLogic.Instance.isGameOver) return;
+
         switch (type)
         {
             case "PLAY_ACTION":
                 if (Enum.TryParse(data["cardType"].ToString(), out DrawPileManager.CardType cardType))
                 {
+                    // CẬP NHẬT HÌNH ẢNH LÊN BÀN CHO TẤT CẢ MỌI NGƯỜI
                     UpdateDiscardPileVisual(cardType);
-                    ShowCardPlayedInDiscardPile(cardType);
-                    // Chỉ Host mới thực thi logic bài, Client chỉ xem Visual
-                    if (OnlineDrawManager.Instance.isHost)
-                        ExecuteCardLogic(cardType, sender);
+
+                    // Logic xử lý của Host
+                    if (OnlineDrawManager.Instance.isHost) ExecuteCardLogic(cardType, sender);
                 }
                 break;
 
             case "DRAW_REQUEST":
-                if (OnlineDrawManager.Instance.isHost)
-                    Host_ProcessDraw(sender);
+                if (OnlineDrawManager.Instance.isHost) Host_ProcessDraw(sender);
                 break;
 
             case "BOMB_TRAPPED":
                 if (data["target"].ToString() == RoomManager.Instance.currentUsername)
                 {
                     if (bombCountdownCoroutine != null) StopCoroutine(bombCountdownCoroutine);
-                    bombCountdownCoroutine = StartCoroutine(BombCountdownTimer(5f));
+                    bombCountdownCoroutine = StartCoroutine(BombCountdownTimer(6f));
                 }
                 break;
 
@@ -221,14 +210,10 @@ public class OnlineGameActionManager : MonoBehaviour
 
             case "FUTURE_DATA":
                 if (data["receiver"].ToString() == RoomManager.Instance.currentUsername)
-                {
-                    string[] cards = data["data"].ToString().Split(',');
-                    ShowSeeFutureUI(cards);
-                }
+                    ShowSeeFutureUI(data["data"].ToString().Split(','));
                 break;
         }
 
-        // Host dọn dẹp Action cũ để tránh tràn dữ liệu
         if (OnlineDrawManager.Instance.isHost) snapshot.Reference.RemoveValueAsync();
     }
 
@@ -237,25 +222,19 @@ public class OnlineGameActionManager : MonoBehaviour
         float remaining = duration;
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(true);
 
-        while (remaining > 0)
+        while (remaining > 0 && isWaitingForDefuse)
         {
-            if (bombTimerText != null) bombTimerText.text = $"BẠN DÍNH BOM! GỠ TRONG: <color=yellow>{Mathf.CeilToInt(remaining)}s</color>";
+            bombTimerText.text = $"DÍNH BOM! GỠ TRONG: <color=yellow>{Mathf.CeilToInt(remaining)}s</color>";
             yield return new WaitForSeconds(1f);
             remaining -= 1f;
-            if (!isWaitingForDefuse) break;
         }
 
-        if (isWaitingForDefuse)
-        {
-            RequestExplode();
-        }
+        if (isWaitingForDefuse) RequestExplode();
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
     }
 
     private void ExecuteCardLogic(DrawPileManager.CardType type, string sender)
     {
-        if (isWaitingForDefuse && type != DrawPileManager.CardType.Defuse) return;
-
         switch (type)
         {
             case DrawPileManager.CardType.Skip: HandleEndTurnLogic(); break;
@@ -265,35 +244,56 @@ public class OnlineGameActionManager : MonoBehaviour
                 SyncDeckAfterAction();
                 break;
             case DrawPileManager.CardType.SeeFuture: HandleSeeFuture(sender); break;
-            case DrawPileManager.CardType.DrawBottom: HandleDrawBottom(sender); break;
+            case DrawPileManager.CardType.DrawBottom: Host_ProcessDrawBottom(sender); break;
             case DrawPileManager.CardType.Defuse: Host_HandleDefuse(sender); break;
         }
     }
 
     // ================================================================
-    // LOGIC DÀNH RIÊNG CHO HOST
+    // HOST LOGIC 
     // ================================================================
 
     private void Host_ProcessDraw(string player)
     {
         DrawPileManager.CardType drawn = DrawPileManager.Instance.DrawCardData();
         SyncDeckAfterAction();
+        ProcessDrawnCardResult(player, drawn);
+    }
 
+    private void Host_ProcessDrawBottom(string player)
+    {
+        DrawPileManager.CardType drawn = DrawPileManager.Instance.DrawBottomCardData();
+        SyncDeckAfterAction();
+        ProcessDrawnCardResult(player, drawn);
+    }
+
+    private void ProcessDrawnCardResult(string player, DrawPileManager.CardType drawn)
+    {
         if (drawn == DrawPileManager.CardType.Explode)
         {
-            Dictionary<string, object> res = new Dictionary<string, object>();
-            res["type"] = "BOMB_TRAPPED";
-            res["target"] = player;
-            roomRef.Child("actions").Push().SetValueAsync(res);
+            Debug.Log($"[Action] {player} rút trúng BOM!");
             roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(true);
+
+            // Gửi lệnh thông báo cho client của người đó hiện Timer
+            roomRef.Child("actions").Push().SetValueAsync(new Dictionary<string, object>
+            {
+                ["type"] = "BOMB_TRAPPED",
+                ["target"] = player,
+                ["sender"] = "SYSTEM"
+            });
         }
         else
         {
-            Dictionary<string, object> res = new Dictionary<string, object>();
-            res["type"] = "DRAW_CONFIRMED";
-            res["cardType"] = drawn.ToString();
-            res["target"] = player;
-            roomRef.Child("actions").Push().SetValueAsync(res).ContinueWithOnMainThread(t => HandleEndTurnLogic());
+            // Rút bài bình thường: Gửi xác nhận về cho người chơi đó nhận bài
+            roomRef.Child("actions").Push().SetValueAsync(new Dictionary<string, object>
+            {
+                ["type"] = "DRAW_CONFIRMED",
+                ["target"] = player,
+                ["cardType"] = drawn.ToString()
+            });
+
+            // Quan trọng: Chỉ chuyển lượt nếu người đó đã rút hết số lượt cần rút (turnsToDraw)
+            HandleEndTurnLogic();
         }
     }
 
@@ -301,44 +301,76 @@ public class OnlineGameActionManager : MonoBehaviour
     {
         if (isWaitingForDefuse)
         {
-            OnlineDrawManager.Instance.Host_InsertBombToFirebaseDeck();
-            Invoke("Host_FinalizeDefuse", 1.0f);
-        }
-    }
+            Debug.Log($"[Action] {sender} đã gỡ bom thành công!");
 
-    private void Host_FinalizeDefuse()
-    {
-        roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
-        HandleEndTurnLogic();
+            // 1. Trộn lại bom vào bộ bài
+            OnlineDrawManager.Instance.Host_InsertBombToFirebaseDeck();
+
+            // 2. Tắt trạng thái chờ
+            roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
+
+            // 3. Kết thúc lượt của người vừa gỡ (vì gỡ bom xong coi như xong lượt)
+            // Dùng Invoke để đảm bảo Firebase Deck đã kịp cập nhật xong trước khi chuyển lượt
+            Invoke("CallEndTurnFromDefuse", 0.5f);
+        }
     }
 
     private void Host_HandlePlayerExploded(string player)
     {
-        roomRef.Child("players").Child(player).Child("isDead").SetValueAsync(true);
-        roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
-        HandleEndTurnLogic();
+        Debug.Log($"[Action] Host xác nhận {player} đã nổ tung!");
+
+        // Ghi vào playersStatus để OnlineGameLogic nhận được Event ChildChanged
+        roomRef.Child("playersStatus").Child(player).Child("isDead").SetValueAsync(true)
+            .ContinueWithOnMainThread(t => {
+                // Sau khi xác nhận chết, tắt trạng thái chờ Defuse và chuyển lượt
+                roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(false);
+                HandleEndTurnLogic();
+            });
     }
 
-    private void HandleEndTurnLogic(bool isAttackAction = false)
+    public void HandleEndTurnLogic(bool isAttackAction = false)
     {
         if (!OnlineDrawManager.Instance.isHost) return;
-        int playersCount = RoomManager.Instance.currentRoomPlayers.Count;
-        int nextTurn;
 
+        List<string> players = RoomManager.Instance.currentRoomPlayers;
+        int nextTurn = OnlineDrawManager.Instance.currentTurnIndex;
+
+        // Nếu đang trong trạng thái cộng dồn lượt (Attack) và không phải là đánh lá Attack tiếp
         if (turnsToDraw > 1 && !isAttackAction)
         {
             turnsToDraw--;
-            nextTurn = OnlineDrawManager.Instance.currentTurnIndex;
+            Debug.Log($"[Action] Người chơi vẫn còn {turnsToDraw} lượt rút nữa.");
         }
         else
         {
-            nextTurn = (OnlineDrawManager.Instance.currentTurnIndex + 1) % playersCount;
+            // TÌM NGƯỜI CHƠI TIẾP THEO CÒN SỐNG
+            int attempts = 0;
+            do
+            {
+                nextTurn = (nextTurn + 1) % players.Count;
+                attempts++;
+                string pName = players[nextTurn];
+
+                // Kiểm tra trạng thái sống từ Dictionary của OnlineGameLogic
+                if (OnlineGameLogic.Instance.playerLifeStatus.ContainsKey(pName) &&
+                    OnlineGameLogic.Instance.playerLifeStatus[pName])
+                {
+                    break; // Tìm thấy người còn sống
+                }
+            } while (attempts < players.Count);
+
+            // Nếu là lá bài Attack, lượt tiếp theo phải rút 2 lần
             turnsToDraw = isAttackAction ? 2 : 1;
         }
 
+        // Cập nhật lên Firebase
         roomRef.Child("gameData/currentTurnIndex").SetValueAsync(nextTurn);
         roomRef.Child("gameData/turnsToDraw").SetValueAsync(turnsToDraw);
     }
+
+    // ================================================================
+    // SYNC & VISUALS
+    // ================================================================
 
     private void ListenForDefuseStatus()
     {
@@ -352,44 +384,6 @@ public class OnlineGameActionManager : MonoBehaviour
         };
     }
 
-    private void SyncDeckAfterAction() => OnlineDrawManager.Instance?.UpdateDeckToFirebaseFromManager();
-
-    private void HandleSeeFuture(string receiver)
-    {
-        List<DrawPileManager.CardType> top3 = DrawPileManager.Instance.GetTopCards(3);
-        string top3Str = string.Join(",", top3);
-
-        Dictionary<string, object> msg = new Dictionary<string, object>();
-        msg["type"] = "FUTURE_DATA";
-        msg["receiver"] = receiver;
-        msg["data"] = top3Str;
-        roomRef.Child("actions").Push().SetValueAsync(msg);
-    }
-
-    private void HandleDrawBottom(string receiver)
-    {
-        DrawPileManager.CardType bottomCard = DrawPileManager.Instance.DrawBottomCardData();
-        SyncDeckAfterAction();
-
-        if (bottomCard == DrawPileManager.CardType.Explode)
-        {
-            Dictionary<string, object> res = new Dictionary<string, object>();
-            res["type"] = "BOMB_TRAPPED";
-            res["target"] = receiver;
-            roomRef.Child("actions").Push().SetValueAsync(res);
-            roomRef.Child("gameData/isWaitingForDefuse").SetValueAsync(true);
-        }
-        else
-        {
-            Dictionary<string, object> result = new Dictionary<string, object>();
-            result["type"] = "DRAW_CONFIRMED";
-            result["target"] = receiver;
-            result["cardType"] = bottomCard.ToString();
-
-            roomRef.Child("actions").Push().SetValueAsync(result).ContinueWithOnMainThread(t => HandleEndTurnLogic());
-        }
-    }
-
     private void ListenForTurnData()
     {
         roomRef.Child("gameData/turnsToDraw").ValueChanged += (s, e) => {
@@ -397,23 +391,43 @@ public class OnlineGameActionManager : MonoBehaviour
         };
     }
 
-    private void ShowCardPlayedInDiscardPile(DrawPileManager.CardType type)
+    private void SyncDeckAfterAction() => OnlineDrawManager.Instance?.UpdateDeckToFirebaseFromManager();
+
+    private void HandleSeeFuture(string receiver)
     {
-        if (DrawPileManager.Instance != null)
-            DrawPileManager.Instance.AddToDiscardPile(type);
+        var top3 = DrawPileManager.Instance.GetTopCards(3);
+        roomRef.Child("actions").Push().SetValueAsync(new Dictionary<string, object>
+        {
+            ["type"] = "FUTURE_DATA",
+            ["receiver"] = receiver,
+            ["data"] = string.Join(",", top3)
+        });
     }
 
+    // ĐÂY LÀ HÀM QUAN TRỌNG ĐÃ ĐƯỢC CẬP NHẬT TỪ SCRIPT COMMENT
     private void UpdateDiscardPileVisual(DrawPileManager.CardType type)
     {
         if (discardPileDisplay == null) return;
+
         Sprite s = GetSpriteByType(type);
         if (s != null)
         {
+            // Bật Object lên
             discardPileDisplay.gameObject.SetActive(true);
             discardPileDisplay.enabled = true;
+
+            // Gán hình ảnh lá bài
             discardPileDisplay.sprite = s;
+
+            // Đảm bảo Alpha là 1 (không bị trong suốt)
             discardPileDisplay.color = Color.white;
+
+            // Đưa lá bài lên trên cùng để không bị che khuất bởi UI khác
             discardPileDisplay.transform.SetAsLastSibling();
+
+            // Cập nhật logic vào Manager cục bộ (nếu cần để đồng bộ âm thanh/hiệu ứng)
+            if (DrawPileManager.Instance != null)
+                DrawPileManager.Instance.AddToDiscardPile(type);
         }
     }
 
@@ -423,13 +437,10 @@ public class OnlineGameActionManager : MonoBehaviour
         seeFuturePanel.SetActive(true);
         for (int i = 0; i < futureCardSlots.Length; i++)
         {
-            if (i < cardNames.Length)
+            if (i < cardNames.Length && Enum.TryParse(cardNames[i], out DrawPileManager.CardType t))
             {
-                if (Enum.TryParse(cardNames[i], out DrawPileManager.CardType type))
-                {
-                    futureCardSlots[i].sprite = GetSpriteByType(type);
-                    futureCardSlots[i].gameObject.SetActive(true);
-                }
+                futureCardSlots[i].sprite = GetSpriteByType(t);
+                futureCardSlots[i].gameObject.SetActive(true);
             }
             else futureCardSlots[i].gameObject.SetActive(false);
         }
@@ -442,10 +453,11 @@ public class OnlineGameActionManager : MonoBehaviour
     private Sprite GetSpriteByType(DrawPileManager.CardType type)
     {
         if (cardVisuals == null) return null;
-        foreach (var visual in cardVisuals)
-        {
-            if (visual.type == type) return visual.cardSprite;
-        }
+        foreach (var v in cardVisuals) if (v.type == type) return v.cardSprite;
         return null;
+    }
+    private void CallEndTurnFromDefuse()
+    {
+        HandleEndTurnLogic(false);
     }
 }
