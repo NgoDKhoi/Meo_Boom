@@ -6037,7 +6037,7 @@ MonoBehaviour:
   musicSource: {fileID: 1128285355}
   sfxSource: {fileID: 1128285354}
   themeMusic: {fileID: 8300000, guid: 3d86e862557764b4ba31be12fb4e24b1, type: 3}
-  battleMusic: {fileID: 0}
+  battleMusic: {fileID: 8300000, guid: 9ac01112404045b439b815c3d9aee8a1, type: 3}
   victoryMusic: {fileID: 8300000, guid: 4f584706eced46a409af887dd53b3638, type: 3}
   buttonClick: {fileID: 8300000, guid: f915feaa8cc568549b63edcad3a9931d, type: 3}
   drawCardSound: {fileID: 0}
