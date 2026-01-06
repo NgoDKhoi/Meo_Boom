@@ -749,6 +749,12 @@ public class GameManager : MonoBehaviour
             // 3. DỪNG GAME LOOP
             StopAllCoroutines(); // Dừng tất cả mọi hoạt động rút bài, bot suy nghĩ...
 
+            if (AudioManager.Instance != null)
+            {
+                // Phát nhạc chiến thắng (Nhạc này cũng sẽ loop nếu bạn dùng PlayMusic)
+                AudioManager.Instance.PlayMusic(AudioManager.Instance.victoryMusic);
+            }
+
             return true; // Đã có người thắng
         }
 
@@ -1630,7 +1636,13 @@ public class GameManager : MonoBehaviour
         CardController.selectedCard = null;
     
         // Load về scene phòng chờ
-        SceneManager.LoadScene("LoadRoomScene"); 
+        SceneManager.LoadScene("LoadRoomScene");
+
+        if (AudioManager.Instance != null)
+        {
+            // Chuyển lại nhạc Theme ngay khi nhấn nút quay về
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.themeMusic);
+        }
     }
     #endregion
 }
