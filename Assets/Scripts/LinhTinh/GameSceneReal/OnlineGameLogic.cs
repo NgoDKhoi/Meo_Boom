@@ -194,7 +194,7 @@ public class OnlineGameLogic : MonoBehaviour
                     if (victoryPanel.activeSelf) return;
 
                     isGameOver = true;
-                    ShowVictoryUI(winner);
+                    StartCoroutine(ShowVictoryUI(winner));
 
                     // CHỈ HOST MỚI THỰC HIỆN CỘNG ĐIỂM VÀO DATABASE
                     if (isHost)
@@ -236,8 +236,10 @@ public class OnlineGameLogic : MonoBehaviour
         });
     }
 
-    private void ShowVictoryUI(string winnerName)
+    private System.Collections.IEnumerator ShowVictoryUI(string winnerName)
     {
+        yield return new WaitForSeconds(2.5f);
+        
         string myName = RoomManager.Instance.currentUsername;
         bool amIWinner = (winnerName == myName);
 

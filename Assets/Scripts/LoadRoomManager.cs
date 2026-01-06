@@ -131,7 +131,7 @@ public class LoadRoomManager : MonoBehaviour
 
     public void OnVsBotClicked()
     {
-        SceneManager.LoadScene("Gameplay");
+        SceneManager.LoadScene("GameSceneFake");
     }
 
     public void OnLeaderboardClicked()

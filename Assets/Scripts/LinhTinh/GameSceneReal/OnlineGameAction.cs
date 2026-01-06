@@ -186,9 +186,12 @@ public class OnlineGameActionManager : MonoBehaviour
                 {
                     // CẬP NHẬT HÌNH ẢNH LÊN BÀN CHO TẤT CẢ MỌI NGƯỜI
                     UpdateDiscardPileVisual(cardType);
+                    // ShowCardPlayedInDiscardPile(cardType);
+                    // Chỉ Host mới thực thi logic bài, Client chỉ xem Visual
+                    OnlineEffectManager.Instance.PlayEffect(cardType, sender);
 
-                    // Logic xử lý của Host
-                    if (OnlineDrawManager.Instance.isHost) ExecuteCardLogic(cardType, sender);
+                    if (OnlineDrawManager.Instance.isHost)
+                        ExecuteCardLogic(cardType, sender);
                 }
                 break;
 
@@ -205,6 +208,7 @@ public class OnlineGameActionManager : MonoBehaviour
                 break;
 
             case "PLAYER_EXPLODED":
+                OnlineEffectManager.Instance.PlayEffect(DrawPileManager.CardType.Explode, sender);
                 if (OnlineDrawManager.Instance.isHost) Host_HandlePlayerExploded(sender);
                 break;
 
@@ -445,7 +449,7 @@ public class OnlineGameActionManager : MonoBehaviour
             else futureCardSlots[i].gameObject.SetActive(false);
         }
         CancelInvoke("HideSeeFutureUI");
-        Invoke("HideSeeFutureUI", 5f);
+        Invoke("HideSeeFutureUI", 7f);
     }
 
     public void HideSeeFutureUI() => seeFuturePanel.SetActive(false);

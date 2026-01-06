@@ -56,15 +56,9 @@ public class CardController : MonoBehaviour, IPointerDownHandler
 
     void HandleClickInput()
     {
-        // --- KIỂM TRA LƯỢT ONLINE (NẾU CÓ MANAGER ONLINE) ---
-        if (OnlineDrawManager.Instance != null)
-        {
-            if (!OnlineDrawManager.Instance.IsMyTurn())
-            {
-                Debug.Log("<color=red>Chưa đến lượt Online!</color>");
-                return;
-            }
-        }
+        // Nếu có Manager Online, tức là đang chơi Online, hãy để OnlineCardController xử lý
+        if (OnlineDrawManager.Instance != null) return;
+        
         // --- LOGIC OFFLINE CŨ ---
         else if (GameManager.Instance != null && GameManager.Instance.players[GameManager.Instance.currentPlayerIndex].type != GameManager.PlayerType.Human)
             return;
