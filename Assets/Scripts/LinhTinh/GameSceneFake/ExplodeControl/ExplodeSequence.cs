@@ -37,7 +37,7 @@ public class ExplodeSequence : MonoBehaviour
             GameObject explosionFX = Instantiate(explosionPrefab, transform.position, Quaternion.identity, transform);
 
             // TƯƠNG TỰ VỚI VỤ NỔ
-            explosionFX.transform.localScale = new Vector3(12f, 12f, 12f);
+            explosionFX.transform.localScale = new Vector3(18f, 12f, 12f);
 
             yield return new WaitForSeconds(explosionDurationTime);
         }
