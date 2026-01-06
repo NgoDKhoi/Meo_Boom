@@ -239,7 +239,13 @@ public class OnlineGameLogic : MonoBehaviour
     private System.Collections.IEnumerator ShowVictoryUI(string winnerName)
     {
         yield return new WaitForSeconds(2.5f);
-        
+
+        if (AudioManager.Instance != null)
+        {
+            // Phát nhạc chiến thắng (Nhạc này cũng sẽ loop nếu bạn dùng PlayMusic)
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.victoryMusic);
+        }
+
         string myName = RoomManager.Instance.currentUsername;
         bool amIWinner = (winnerName == myName);
 
@@ -255,6 +261,12 @@ public class OnlineGameLogic : MonoBehaviour
 
     public void OnConfirmVictoryClick()
     {
+        if (AudioManager.Instance != null)
+        {
+            // Chuyển lại nhạc Theme ngay khi nhấn nút quay về
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.themeMusic);
+        }
+
         // Khi bấm xác nhận, người chơi thoát khỏi danh sách "players" của phòng để dọn dẹp phòng
         string myName = RoomManager.Instance.currentUsername;
         roomRef.Child("players").Child(myName).RemoveValueAsync().ContinueWithOnMainThread(t => {

@@ -5840,7 +5840,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -5937,7 +5937,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -6038,6 +6038,7 @@ MonoBehaviour:
   sfxSource: {fileID: 1128285354}
   themeMusic: {fileID: 8300000, guid: 3d86e862557764b4ba31be12fb4e24b1, type: 3}
   battleMusic: {fileID: 8300000, guid: d495d5e5be092884ebf0f6e6f9771111, type: 3}
+  victoryMusic: {fileID: 8300000, guid: 4f584706eced46a409af887dd53b3638, type: 3}
   buttonClick: {fileID: 8300000, guid: f915feaa8cc568549b63edcad3a9931d, type: 3}
 --- !u!4 &1128285357
 Transform:

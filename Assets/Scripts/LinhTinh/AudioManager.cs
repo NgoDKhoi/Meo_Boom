@@ -9,13 +9,13 @@ public class AudioManager : MonoBehaviour
     public AudioSource sfxSource;
 
     [Header("---- Audio Clips ----")]
-    public AudioClip themeMusic;  // Dành cho Login, Lobby
-    public AudioClip battleMusic; // Dành cho trận đấu
-    public AudioClip buttonClick; // Tiếng click nút
+    public AudioClip themeMusic;
+    public AudioClip battleMusic;
+    public AudioClip victoryMusic; // Nhạc ăn mừng chiến thắng
+    public AudioClip buttonClick;
 
     private void Awake()
     {
-        // QUAN TRỌNG: Giữ AudioManager tồn tại qua mọi Scene
         if (Instance == null)
         {
             Instance = this;
@@ -30,16 +30,22 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        // Vừa vào game là phát nhạc Theme ngay
         PlayMusic(themeMusic);
     }
 
     public void PlayMusic(AudioClip clip)
     {
-        if (musicSource.clip == clip) return; // Nếu đang phát bài này rồi thì không phát lại
+        if (musicSource.clip == clip && musicSource.isPlaying) return;
+
         musicSource.clip = clip;
-        musicSource.loop = true;
+        musicSource.loop = true; // Đảm bảo luôn lặp lại (Yêu cầu 1 của bạn)
         musicSource.Play();
+    }
+
+    // Hàm mới để dừng nhạc nền khi cần thiết
+    public void StopMusic()
+    {
+        musicSource.Stop();
     }
 
     public void PlaySFX(AudioClip clip)
