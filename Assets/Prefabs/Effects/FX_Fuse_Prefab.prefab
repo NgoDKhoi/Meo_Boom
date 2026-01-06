@@ -127,4 +127,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EffectAnimation
   effectDuration: 1
+  soundOffset: 0
   moveSpeed: 5

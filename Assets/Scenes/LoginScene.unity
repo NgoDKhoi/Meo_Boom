@@ -6037,11 +6037,11 @@ MonoBehaviour:
   musicSource: {fileID: 1128285355}
   sfxSource: {fileID: 1128285354}
   themeMusic: {fileID: 8300000, guid: 3d86e862557764b4ba31be12fb4e24b1, type: 3}
-  battleMusic: {fileID: 8300000, guid: d495d5e5be092884ebf0f6e6f9771111, type: 3}
+  battleMusic: {fileID: 0}
   victoryMusic: {fileID: 8300000, guid: 4f584706eced46a409af887dd53b3638, type: 3}
   buttonClick: {fileID: 8300000, guid: f915feaa8cc568549b63edcad3a9931d, type: 3}
-  drawCardSound: {fileID: 8300000, guid: 54741730efd96bd469e8ce4fb69a8d58, type: 3}
-  playCardSound: {fileID: 8300000, guid: 54741730efd96bd469e8ce4fb69a8d58, type: 3}
+  drawCardSound: {fileID: 0}
+  playCardSound: {fileID: 0}
 --- !u!4 &1128285357
 Transform:
   m_ObjectHideFlags: 0
