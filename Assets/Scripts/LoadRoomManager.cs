@@ -131,12 +131,12 @@ public class LoadRoomManager : MonoBehaviour
 
     public void OnVsBotClicked()
     {
+        SceneManager.LoadScene("GameSceneFake");
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayMusic(AudioManager.Instance.battleMusic);
         }
-
-        SceneManager.LoadScene("GameSceneFake");
     }
 
     public void OnLeaderboardClicked()
