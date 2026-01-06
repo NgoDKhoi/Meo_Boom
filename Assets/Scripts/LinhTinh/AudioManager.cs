@@ -38,7 +38,17 @@ public class AudioManager : MonoBehaviour
         if (musicSource.clip == clip && musicSource.isPlaying) return;
 
         musicSource.clip = clip;
-        musicSource.loop = true; // Đảm bảo luôn lặp lại (Yêu cầu 1 của bạn)
+
+        // KIỂM TRA: Nếu là nhạc Victory thì KHÔNG lặp, các nhạc khác thì CÓ lặp
+        if (clip == victoryMusic)
+        {
+            musicSource.loop = false;
+        }
+        else
+        {
+            musicSource.loop = true;
+        }
+
         musicSource.Play();
     }
 
