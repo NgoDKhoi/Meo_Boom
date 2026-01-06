@@ -13,6 +13,8 @@ public class AudioManager : MonoBehaviour
     public AudioClip battleMusic;
     public AudioClip victoryMusic; // Nhạc ăn mừng chiến thắng
     public AudioClip buttonClick;
+    public AudioClip drawCardSound;
+    public AudioClip playCardSound;
 
     private void Awake()
     {

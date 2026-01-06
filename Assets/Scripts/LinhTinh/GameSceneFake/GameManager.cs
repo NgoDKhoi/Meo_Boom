@@ -183,7 +183,7 @@ public class GameManager : MonoBehaviour
             p.hand.Add(DrawPileManager.CardType.Defuse);
 
             // Gộp logic Animation/Update UI vào một Coroutine đơn lẻ
-            yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, DrawPileManager.CardType.Defuse, false));
+            yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, DrawPileManager.CardType.Defuse, false, false));
 
             // B. Rút thêm 4 lá ngẫu nhiên từ bộ bài an toàn
             for (int k = 0; k < 4; k++)
@@ -192,7 +192,7 @@ public class GameManager : MonoBehaviour
                 p.hand.Add(drawnCard);
 
                 // Dùng Coroutine chung cho 4 lá còn lại
-                yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, drawnCard, true));
+                yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, drawnCard, true, false)); // false để tắt tiếng "xoẹt xoẹt" liên hồi
             }
 
             yield return new WaitForSeconds(0.35f);
@@ -1268,6 +1268,9 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+
         // 1. Xóa bài khỏi tay Bot (xóa trong data)
         bot.hand.Remove(cardType);
         drawPileManager.AddToDiscardPile(cardType);
@@ -1335,6 +1338,9 @@ public class GameManager : MonoBehaviour
             // Chỉ chấp nhận thẻ Defuse
             if (cardObj.cardType == DrawPileManager.CardType.Defuse)
             {
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+
                 // 1. Xóa bài khỏi tay & bay vào Discard Pile
                 ProcessCardData(currentP, cardObj.cardType);
                 cardObj.PlayCard(discardPileTransform);
@@ -1391,6 +1397,9 @@ public class GameManager : MonoBehaviour
             Debug.Log("Quyết định đánh bài từ Main Player, dừng Timer!");
             turnTimer.StopTimer();
         }
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
 
         // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
         cardObj.PlayCard(discardPileTransform);
@@ -1551,7 +1560,7 @@ public class GameManager : MonoBehaviour
         if (le != null) le.ignoreLayout = false;
     }
 
-    IEnumerator AnimateCardDrawAndAddToHand(Player p, DrawPileManager.CardType cardType, bool isRandomCard)
+    IEnumerator AnimateCardDrawAndAddToHand(Player p, DrawPileManager.CardType cardType, bool isRandomCard, bool playSound = true) // Thêm tham số playSound
     {
         // Lấy vị trí World Space của nút bốc bài
         Vector3 startPosition = drawButton.transform.position;
@@ -1576,11 +1585,13 @@ public class GameManager : MonoBehaviour
         // Lấy vị trí đích (tay người chơi hoặc vị trí Bot Hand Area)
         Transform targetParent = (p.type == PlayerType.Human) ? playerHandArea : p.botDisplayUI.handArea;
 
-        // Tính toán VỊ TRÍ CUỐI CÙNG trong World Space.
-        // Đối với Human: Vị trí cuối cùng là vị trí ảo trong Layout Group (Khó tính)
-        // -> Cần dùng logic MoveCardToHand (sẽ sửa lại)
-        // Đối với Bot: Vị trí cuối cùng là vị trí của Hand Area (tạm chấp nhận bay đến giữa Hand Area)
         Vector3 targetPos = (p.type == PlayerType.Human) ? Vector3.zero : targetParent.position;
+
+        // CHỈ PHÁT SOUND NẾU playSound = true
+        if (playSound && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.drawCardSound);
+        }
 
         if (p.type == PlayerType.Human)
         {
