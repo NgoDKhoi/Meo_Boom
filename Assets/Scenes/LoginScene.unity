@@ -6169,7 +6169,7 @@ MonoBehaviour:
   battleMusic: {fileID: 8300000, guid: 9359f2342fcb9744593238ad8410b228, type: 3}
   victoryMusic: {fileID: 8300000, guid: 4f584706eced46a409af887dd53b3638, type: 3}
   buttonClick: {fileID: 8300000, guid: f915feaa8cc568549b63edcad3a9931d, type: 3}
-  drawCardSound: {fileID: 0}
+  drawCardSound: {fileID: 8300000, guid: 282281a90b3e69b429758e8814f07d62, type: 3}
   playCardSound: {fileID: 0}
   warningSource: {fileID: 170894085}
   successSound: {fileID: 8300000, guid: 6d603006de2726f41b67269eca066084, type: 3}
