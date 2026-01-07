@@ -34,6 +34,11 @@ public class OnlinePlayButtonHandler : MonoBehaviour
             return;
         }
 
+        // --- CHÈN VÀO ĐÂY: Tiếng đánh bài cho chính bạn nghe ---
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+        // ------------------------------------------------------
+
         // 2. Kiểm tra xem có đúng lượt không (Bảo mật thêm một lớp nữa)
         if (OnlineGameLogic.Instance != null && !OnlineGameLogic.Instance.IsMyTurn())
         {

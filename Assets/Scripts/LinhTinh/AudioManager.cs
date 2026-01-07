@@ -1,0 +1,95 @@
+﻿using UnityEngine;
+
+public class AudioManager : MonoBehaviour
+{
+    public static AudioManager Instance;
+
+    [Header("---- Audio Sources ----")]
+    public AudioSource musicSource;
+    public AudioSource sfxSource;
+
+    [Header("---- Audio Clips ----")]
+    public AudioClip themeMusic;
+    public AudioClip battleMusic;
+    public AudioClip victoryMusic; 
+    public AudioClip buttonClick;
+    public AudioClip drawCardSound;
+    public AudioClip playCardSound;
+
+    [Header("---- Warning Settings ----")]
+    public AudioSource warningSource;
+
+    [Header("---- UI & Feedback Clips ----")]
+    public AudioClip successSound;
+    public AudioClip failureSound;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+    }
+
+    private void Start()
+    {
+        PlayMusic(themeMusic);
+    }
+
+    public void PlayMusic(AudioClip clip)
+    {
+        if (musicSource.clip == clip && musicSource.isPlaying) return;
+
+        musicSource.clip = clip;
+
+        // KIỂM TRA: Nếu là nhạc Victory thì KHÔNG lặp, các nhạc khác thì CÓ lặp
+        if (clip == victoryMusic)
+        {
+            musicSource.loop = false;
+        }
+        else
+        {
+            musicSource.loop = true;
+        }
+
+        musicSource.Play();
+    }
+
+    // Hàm mới để dừng nhạc nền khi cần thiết
+    public void StopMusic()
+    {
+        musicSource.Stop();
+    }
+
+    public void PlaySFX(AudioClip clip)
+    {
+        sfxSource.PlayOneShot(clip);
+    }
+
+    public void PlayWarning(bool shouldPlay)
+    {
+        if (shouldPlay)
+        {
+            // Chỉ phát nếu nó chưa kêu để tránh bị lặp đè tiếng
+            if (!warningSource.isPlaying)
+            {
+                warningSource.loop = true;
+                warningSource.Play();
+            }
+        }
+        else
+        {
+            // Dừng ngay lập tức khi không còn dính bom
+            if (warningSource.isPlaying)
+            {
+                warningSource.Stop();
+            }
+        }
+    }
+}

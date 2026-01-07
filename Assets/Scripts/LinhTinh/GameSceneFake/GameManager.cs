@@ -97,7 +97,7 @@ public class GameManager : MonoBehaviour
     [Header("--- TIMER SYSTEM ---")]
     public TurnTimer turnTimer;
     public float defaultTurnTime = 10f; // Thời gian suy nghĩ: 10 giây
-    public float defuseTurnTime = 3f;   // Thời gian gỡ bom: 3 giây
+    public float defuseTurnTime = 5f;   // Thời gian gỡ bom: 5 giây
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -183,7 +183,7 @@ public class GameManager : MonoBehaviour
             p.hand.Add(DrawPileManager.CardType.Defuse);
 
             // Gộp logic Animation/Update UI vào một Coroutine đơn lẻ
-            yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, DrawPileManager.CardType.Defuse, false));
+            yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, DrawPileManager.CardType.Defuse, false, false));
 
             // B. Rút thêm 4 lá ngẫu nhiên từ bộ bài an toàn
             for (int k = 0; k < 4; k++)
@@ -192,7 +192,7 @@ public class GameManager : MonoBehaviour
                 p.hand.Add(drawnCard);
 
                 // Dùng Coroutine chung cho 4 lá còn lại
-                yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, drawnCard, true));
+                yield return StartCoroutine(AnimateCardDrawAndAddToHand(p, drawnCard, true, false)); // false để tắt tiếng "xoẹt xoẹt" liên hồi
             }
 
             yield return new WaitForSeconds(0.35f);
@@ -322,6 +322,10 @@ public class GameManager : MonoBehaviour
                     {
                         // LOGIC CHO NGƯỜI: Bật chế độ chờ bấm nút
                         IsDefusing = true;
+
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlayWarning(true);
+
                         if (turnInfoText != null)
                             turnInfoText.text = "RÚT TRÚNG BOM!\nHÃY ĐÁNH DEFUSE!";
 
@@ -336,6 +340,9 @@ public class GameManager : MonoBehaviour
                     }
                     else // LOGIC CHO BOT: Tự động gỡ bom
                     {
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlayWarning(false);
+
                         if (turnInfoText != null)
                             turnInfoText.text = $"{currentP.name}\nĐANG GỠ BOM...";
 
@@ -676,6 +683,9 @@ public class GameManager : MonoBehaviour
     // Hàm xử lý người chơi bị loại
     public IEnumerator HandlePlayerDeathRoutine(Player p)
     {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayWarning(false);
+
         // THỜI GIAN CỐ ĐỊNH = 1.0s (dây cháy) + 1.5s (nổ) = 2.5s
         float totalExplodeDuration = 2.5f; // << GIỮ GIÁ TRỊ NÀY
 
@@ -735,6 +745,9 @@ public class GameManager : MonoBehaviour
         // Nếu chỉ còn lại 1 người (hoặc 0 nếu xui xẻo nổ hết)
         if (aliveCount <= 1)
         {
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlayWarning(false);
+
             Debug.Log("GAME OVER!");
 
             // 1. Hiện bảng chiến thắng
@@ -748,6 +761,12 @@ public class GameManager : MonoBehaviour
 
             // 3. DỪNG GAME LOOP
             StopAllCoroutines(); // Dừng tất cả mọi hoạt động rút bài, bot suy nghĩ...
+
+            if (AudioManager.Instance != null)
+            {
+                // Phát nhạc chiến thắng (Nhạc này cũng sẽ loop nếu bạn dùng PlayMusic)
+                AudioManager.Instance.PlayMusic(AudioManager.Instance.victoryMusic);
+            }
 
             return true; // Đã có người thắng
         }
@@ -944,6 +963,9 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log($"<color=red>HẾT GIỜ GỠ BOM! {currentP.name} CHẾT!</color>");
             IsDefusing = false;
+
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlayWarning(false);
 
             // FORCE DESELECT lá Defuse nếu đang chọn
             if (CardController.selectedCard != null)
@@ -1262,6 +1284,9 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+
         // 1. Xóa bài khỏi tay Bot (xóa trong data)
         bot.hand.Remove(cardType);
         drawPileManager.AddToDiscardPile(cardType);
@@ -1323,12 +1348,24 @@ public class GameManager : MonoBehaviour
         CardController cardObj = CardController.selectedCard;
         Player currentP = players[currentPlayerIndex];
 
+        if (turnTimer != null)
+        {
+            turnTimer.StopTimer();
+            Debug.Log("Đã bấm nút Play: Dừng Timer để xử lý animation.");
+        }
+
         // A. NẾU ĐANG TRÚNG BOOM
         if (IsDefusing)
         {
             // Chỉ chấp nhận thẻ Defuse
             if (cardObj.cardType == DrawPileManager.CardType.Defuse)
             {
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlayWarning(false);
+
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+
                 // 1. Xóa bài khỏi tay & bay vào Discard Pile
                 ProcessCardData(currentP, cardObj.cardType);
                 cardObj.PlayCard(discardPileTransform);
@@ -1386,6 +1423,9 @@ public class GameManager : MonoBehaviour
             turnTimer.StopTimer();
         }
 
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+
         // 2. KÍCH HOẠT ANIMATION BAY TỪ TAY ĐẾN BỘ BỎ
         cardObj.PlayCard(discardPileTransform);
         yield return new WaitForSeconds(0.4f);
@@ -1440,18 +1480,7 @@ public class GameManager : MonoBehaviour
 
         if (type == DrawPileManager.CardType.Defuse)
         {
-            if (isSelecting)
-            {
-                // DỪNG TIMER NGAY LẬP TỨC KHI CHỌN LÁ DEFUSE
-                if (turnTimer != null) turnTimer.StopTimer();
-                Debug.Log("<color=cyan>ĐÃ DỪNG TIMER 3S. Người chơi đang chọn Defuse.</color>");
-            }
-            else
-            {
-                // BẬT LẠI TIMER TỪ MỐC ĐÃ DỪNG KHI BỎ CHỌN LÁ DEFUSE
-                if (turnTimer != null) turnTimer.StartTimer(turnTimer.CurrentTimeValue, true); // true = Defuse Mode
-                Debug.Log("<color=red>BỎ CHỌN DEFUSE. KÍCH HOẠT LẠI TIMER 3S.</color>");
-            }
+            Debug.Log(isSelecting ? "Đang giữ lá Defuse (Timer vẫn chạy)" : "Đã bỏ chọn Defuse");
         }
     }
     #endregion
@@ -1545,7 +1574,7 @@ public class GameManager : MonoBehaviour
         if (le != null) le.ignoreLayout = false;
     }
 
-    IEnumerator AnimateCardDrawAndAddToHand(Player p, DrawPileManager.CardType cardType, bool isRandomCard)
+    IEnumerator AnimateCardDrawAndAddToHand(Player p, DrawPileManager.CardType cardType, bool isRandomCard, bool playSound = true) // Thêm tham số playSound
     {
         // Lấy vị trí World Space của nút bốc bài
         Vector3 startPosition = drawButton.transform.position;
@@ -1570,11 +1599,13 @@ public class GameManager : MonoBehaviour
         // Lấy vị trí đích (tay người chơi hoặc vị trí Bot Hand Area)
         Transform targetParent = (p.type == PlayerType.Human) ? playerHandArea : p.botDisplayUI.handArea;
 
-        // Tính toán VỊ TRÍ CUỐI CÙNG trong World Space.
-        // Đối với Human: Vị trí cuối cùng là vị trí ảo trong Layout Group (Khó tính)
-        // -> Cần dùng logic MoveCardToHand (sẽ sửa lại)
-        // Đối với Bot: Vị trí cuối cùng là vị trí của Hand Area (tạm chấp nhận bay đến giữa Hand Area)
         Vector3 targetPos = (p.type == PlayerType.Human) ? Vector3.zero : targetParent.position;
+
+        // CHỈ PHÁT SOUND NẾU playSound = true
+        if (playSound && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(AudioManager.Instance.drawCardSound);
+        }
 
         if (p.type == PlayerType.Human)
         {
@@ -1630,7 +1661,13 @@ public class GameManager : MonoBehaviour
         CardController.selectedCard = null;
     
         // Load về scene phòng chờ
-        SceneManager.LoadScene("LoadRoomScene"); 
+        SceneManager.LoadScene("LoadRoomScene");
+
+        if (AudioManager.Instance != null)
+        {
+            // Chuyển lại nhạc Theme ngay khi nhấn nút quay về
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.themeMusic);
+        }
     }
     #endregion
 }

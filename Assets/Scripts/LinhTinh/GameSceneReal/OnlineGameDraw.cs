@@ -243,6 +243,9 @@ public class OnlineDrawManager : MonoBehaviour
                     string target = data.ContainsKey("target") ? data["target"].ToString() : "";
                     string cardName = data.ContainsKey("cardType") ? data["cardType"].ToString() : "";
 
+                    if (AudioManager.Instance != null)
+                        AudioManager.Instance.PlaySFX(AudioManager.Instance.drawCardSound);
+
                     if (target == RoomManager.Instance.currentUsername)
                     {
                         StopWaitingFirebase();

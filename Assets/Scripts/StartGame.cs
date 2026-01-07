@@ -128,6 +128,11 @@ public class GameStarterManager : MonoBehaviour
                     roomRef.Child("Started").ValueChanged -= startStatusListener;
                     roomRef.Child("players").ValueChanged -= playerListListener;
 
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayMusic(AudioManager.Instance.battleMusic);
+                    }
+
                     SceneManager.LoadScene(GAMEPLAY_SCENE);
                 }
             }

@@ -22,9 +22,9 @@ public class ExplodeSequence : MonoBehaviour
         if (fusePrefab != null)
         {
             GameObject fuseFX = Instantiate(fusePrefab, transform.position, Quaternion.identity, transform);
-        
+
             // ÉP SCALE CỦA CON THEO CHA (Đảm bảo chắc chắn nó nhỏ)
-            fuseFX.transform.localScale = Vector3.one; 
+            fuseFX.transform.localScale = new Vector3(4f, 4f, 4f);
             // Vì đã là con của Master (0.25), nên gán localScale = 1 
             // thì kích thước thực tế của nó sẽ là 0.25 so với thế giới.
 
@@ -35,9 +35,9 @@ public class ExplodeSequence : MonoBehaviour
         if (explosionPrefab != null)
         {
             GameObject explosionFX = Instantiate(explosionPrefab, transform.position, Quaternion.identity, transform);
-        
+
             // TƯƠNG TỰ VỚI VỤ NỔ
-            explosionFX.transform.localScale = Vector3.one; 
+            explosionFX.transform.localScale = new Vector3(18f, 12f, 12f);
 
             yield return new WaitForSeconds(explosionDurationTime);
         }

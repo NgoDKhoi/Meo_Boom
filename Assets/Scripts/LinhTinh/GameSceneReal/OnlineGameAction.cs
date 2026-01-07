@@ -184,6 +184,12 @@ public class OnlineGameActionManager : MonoBehaviour
             case "PLAY_ACTION":
                 if (Enum.TryParse(data["cardType"].ToString(), out DrawPileManager.CardType cardType))
                 {
+                    if (sender != RoomManager.Instance.currentUsername)
+                    {
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
+                    }
+
                     // CẬP NHẬT HÌNH ẢNH LÊN BÀN CHO TẤT CẢ MỌI NGƯỜI
                     UpdateDiscardPileVisual(cardType);
                     // ShowCardPlayedInDiscardPile(cardType);
@@ -232,6 +238,8 @@ public class OnlineGameActionManager : MonoBehaviour
             yield return new WaitForSeconds(1f);
             remaining -= 1f;
         }
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
 
         if (isWaitingForDefuse) RequestExplode();
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);

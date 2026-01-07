@@ -238,8 +238,19 @@ public class OnlineGameLogic : MonoBehaviour
 
     private System.Collections.IEnumerator ShowVictoryUI(string winnerName)
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayWarning(false);
+        }
+
         yield return new WaitForSeconds(2.5f);
-        
+
+        if (AudioManager.Instance != null)
+        {
+            // Phát nhạc chiến thắng (Nhạc này cũng sẽ loop nếu bạn dùng PlayMusic)
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.victoryMusic);
+        }
+
         string myName = RoomManager.Instance.currentUsername;
         bool amIWinner = (winnerName == myName);
 
@@ -255,6 +266,12 @@ public class OnlineGameLogic : MonoBehaviour
 
     public void OnConfirmVictoryClick()
     {
+        if (AudioManager.Instance != null)
+        {
+            // Chuyển lại nhạc Theme ngay khi nhấn nút quay về
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.themeMusic);
+        }
+
         // Khi bấm xác nhận, người chơi thoát khỏi danh sách "players" của phòng để dọn dẹp phòng
         string myName = RoomManager.Instance.currentUsername;
         roomRef.Child("players").Child(myName).RemoveValueAsync().ContinueWithOnMainThread(t => {
@@ -278,6 +295,12 @@ public class OnlineGameLogic : MonoBehaviour
 
     public void UpdateTurnUI()
     {
+        if (isGameOver)
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
+            return;
+        }
+
         if (isGameOver || RoomManager.Instance == null || RoomManager.Instance.currentRoomPlayers == null) return;
         if (currentTurnIndex < 0 || currentTurnIndex >= RoomManager.Instance.currentRoomPlayers.Count) return;
 
@@ -291,11 +314,31 @@ public class OnlineGameLogic : MonoBehaviour
         if (turnInfoText != null)
         {
             if (!isActivePlayerAlive)
+            {
                 turnInfoText.text = $"<color=red>{activePlayer} đã bị loại.</color>";
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
+            }
             else if (isWaitingForDefuse)
+            {
                 turnInfoText.text = isMe ? "<color=red>⚠ DÍNH BOM! GỠ NGAY! ⚠</color>" : $"<color=orange>{activePlayer} đang gỡ...</color>";
+
+                if (isMe && AudioManager.Instance != null)
+                {
+                    // Chỉ máy của tôi phát tiếng kêu
+                    AudioManager.Instance.PlayWarning(true);
+                }
+                else if (AudioManager.Instance != null)
+                {
+                    // Máy người khác im lặng hoàn toàn
+                    AudioManager.Instance.PlayWarning(false);
+                }
+            }
             else
+            {
                 turnInfoText.text = isMe ? "<color=yellow>LƯỢT CỦA BẠN</color>" : $"Lượt: {activePlayer}";
+
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
+            }
         }
 
         if (playCardButton != null)
@@ -336,6 +379,11 @@ public class OnlineGameLogic : MonoBehaviour
             roomRef.Child("gameData/winner").ValueChanged -= winnerHandler;
             roomRef.Child("playersStatus").ChildAdded -= lifeAddedHandler;
             roomRef.Child("playersStatus").ChildChanged -= lifeChangedHandler;
+        }
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayWarning(false);
         }
     }
 

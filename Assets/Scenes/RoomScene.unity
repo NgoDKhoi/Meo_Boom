@@ -901,6 +901,7 @@ GameObject:
   - component: {fileID: 1193637859}
   - component: {fileID: 1193637858}
   - component: {fileID: 1193637857}
+  - component: {fileID: 1193637860}
   m_Layer: 5
   m_Name: BatDau
   m_TagString: Untagged
@@ -1022,6 +1023,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1193637855}
   m_CullTransparentMesh: 1
+--- !u!114 &1193637860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1193637855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 352972808b9a85b4683032e0b21a3e8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ButtonSound
 --- !u!1 &1351574063
 GameObject:
   m_ObjectHideFlags: 0
@@ -1287,6 +1300,7 @@ GameObject:
   - component: {fileID: 1445947938}
   - component: {fileID: 1445947937}
   - component: {fileID: 1445947936}
+  - component: {fileID: 1445947939}
   m_Layer: 5
   m_Name: Thoat
   m_TagString: Untagged
@@ -1408,6 +1422,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1445947934}
   m_CullTransparentMesh: 1
+--- !u!114 &1445947939
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445947934}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 352972808b9a85b4683032e0b21a3e8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ButtonSound
 --- !u!1 &1477312766
 GameObject:
   m_ObjectHideFlags: 0
