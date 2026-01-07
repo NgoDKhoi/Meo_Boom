@@ -128,7 +128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EffectAnimation
   effectDuration: 1.5
-  soundOffset: 0.01
+  soundOffset: 0.9
   moveSpeed: 5
 --- !u!82 &2031116681635632870
 AudioSource:
@@ -141,7 +141,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: 889d1e3d14fd45a47921e4b542b1ec03, type: 3}
+  m_Resource: {fileID: 8300000, guid: 72ba655d3e47eb1408069fcf4f6aa322, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
