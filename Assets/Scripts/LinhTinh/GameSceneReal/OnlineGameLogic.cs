@@ -238,6 +238,11 @@ public class OnlineGameLogic : MonoBehaviour
 
     private System.Collections.IEnumerator ShowVictoryUI(string winnerName)
     {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayWarning(false);
+        }
+
         yield return new WaitForSeconds(2.5f);
 
         if (AudioManager.Instance != null)
@@ -290,6 +295,12 @@ public class OnlineGameLogic : MonoBehaviour
 
     public void UpdateTurnUI()
     {
+        if (isGameOver)
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
+            return;
+        }
+
         if (isGameOver || RoomManager.Instance == null || RoomManager.Instance.currentRoomPlayers == null) return;
         if (currentTurnIndex < 0 || currentTurnIndex >= RoomManager.Instance.currentRoomPlayers.Count) return;
 

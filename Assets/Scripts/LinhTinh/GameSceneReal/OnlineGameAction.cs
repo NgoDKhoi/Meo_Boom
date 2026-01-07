@@ -239,6 +239,8 @@ public class OnlineGameActionManager : MonoBehaviour
             remaining -= 1f;
         }
 
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayWarning(false);
+
         if (isWaitingForDefuse) RequestExplode();
         if (bombTimerText != null) bombTimerText.gameObject.SetActive(false);
     }
