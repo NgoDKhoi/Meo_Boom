@@ -6067,7 +6067,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.302
+  m_Volume: 0.602
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -6165,13 +6165,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   musicSource: {fileID: 1128285355}
   sfxSource: {fileID: 1128285354}
-  themeMusic: {fileID: 8300000, guid: 3d86e862557764b4ba31be12fb4e24b1, type: 3}
-  battleMusic: {fileID: 8300000, guid: 9ac01112404045b439b815c3d9aee8a1, type: 3}
+  themeMusic: {fileID: 8300000, guid: 1e0472bb7fe69fb489fd11b2df1a4803, type: 3}
+  battleMusic: {fileID: 8300000, guid: 9359f2342fcb9744593238ad8410b228, type: 3}
   victoryMusic: {fileID: 8300000, guid: 4f584706eced46a409af887dd53b3638, type: 3}
   buttonClick: {fileID: 8300000, guid: f915feaa8cc568549b63edcad3a9931d, type: 3}
   drawCardSound: {fileID: 0}
   playCardSound: {fileID: 0}
   warningSource: {fileID: 170894085}
+  successSound: {fileID: 8300000, guid: 6d603006de2726f41b67269eca066084, type: 3}
+  failureSound: {fileID: 8300000, guid: 444eb91e1e6588f4eb177799037e7f87, type: 3}
 --- !u!4 &1128285357
 Transform:
   m_ObjectHideFlags: 0
