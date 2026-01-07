@@ -17,7 +17,11 @@ public class AudioManager : MonoBehaviour
     public AudioClip playCardSound;
 
     [Header("---- Warning Settings ----")]
-    public AudioSource warningSource; 
+    public AudioSource warningSource;
+
+    [Header("---- UI & Feedback Clips ----")]
+    public AudioClip successSound;
+    public AudioClip failureSound;
 
     private void Awake()
     {

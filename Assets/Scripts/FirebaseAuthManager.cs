@@ -279,13 +279,29 @@ public class FirebaseAuthManager : MonoBehaviour
 
         notificationText.text = message;
 
-        // Màu cho thông báo (sử dụng màu nền của Image)
         if (notificationBackground != null)
         {
             notificationBackground.color = backgroundColor;
         }
 
         notificationPanel.SetActive(true);
+
+        // --- PHẦN THÊM VÀO: PHÁT ÂM THANH THEO MÀU SẮC ---
+        if (AudioManager.Instance != null)
+        {
+            if (backgroundColor == Color.green)
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.successSound);
+            }
+            else if (backgroundColor == Color.red)
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.failureSound);
+            }
+            else if (backgroundColor == Color.yellow)
+            {
+                AudioManager.Instance.PlaySFX(AudioManager.Instance.successSound);
+            }
+        }
 
         CancelInvoke(nameof(HideNotification));
         Invoke(nameof(HideNotification), duration);
