@@ -97,7 +97,7 @@ public class GameManager : MonoBehaviour
     [Header("--- TIMER SYSTEM ---")]
     public TurnTimer turnTimer;
     public float defaultTurnTime = 10f; // Thời gian suy nghĩ: 10 giây
-    public float defuseTurnTime = 3f;   // Thời gian gỡ bom: 3 giây
+    public float defuseTurnTime = 5f;   // Thời gian gỡ bom: 5 giây
 
     public Vector3 discardPileCardScale = new Vector3(0.5f, 0.5f, 0.5f);
 
@@ -322,6 +322,10 @@ public class GameManager : MonoBehaviour
                     {
                         // LOGIC CHO NGƯỜI: Bật chế độ chờ bấm nút
                         IsDefusing = true;
+
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlayWarning(true);
+
                         if (turnInfoText != null)
                             turnInfoText.text = "RÚT TRÚNG BOM!\nHÃY ĐÁNH DEFUSE!";
 
@@ -336,6 +340,9 @@ public class GameManager : MonoBehaviour
                     }
                     else // LOGIC CHO BOT: Tự động gỡ bom
                     {
+                        if (AudioManager.Instance != null)
+                            AudioManager.Instance.PlayWarning(false);
+
                         if (turnInfoText != null)
                             turnInfoText.text = $"{currentP.name}\nĐANG GỠ BOM...";
 
@@ -676,6 +683,9 @@ public class GameManager : MonoBehaviour
     // Hàm xử lý người chơi bị loại
     public IEnumerator HandlePlayerDeathRoutine(Player p)
     {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayWarning(false);
+
         // THỜI GIAN CỐ ĐỊNH = 1.0s (dây cháy) + 1.5s (nổ) = 2.5s
         float totalExplodeDuration = 2.5f; // << GIỮ GIÁ TRỊ NÀY
 
@@ -735,6 +745,9 @@ public class GameManager : MonoBehaviour
         // Nếu chỉ còn lại 1 người (hoặc 0 nếu xui xẻo nổ hết)
         if (aliveCount <= 1)
         {
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlayWarning(false);
+
             Debug.Log("GAME OVER!");
 
             // 1. Hiện bảng chiến thắng
@@ -950,6 +963,9 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log($"<color=red>HẾT GIỜ GỠ BOM! {currentP.name} CHẾT!</color>");
             IsDefusing = false;
+
+            if (AudioManager.Instance != null)
+                AudioManager.Instance.PlayWarning(false);
 
             // FORCE DESELECT lá Defuse nếu đang chọn
             if (CardController.selectedCard != null)
@@ -1332,12 +1348,21 @@ public class GameManager : MonoBehaviour
         CardController cardObj = CardController.selectedCard;
         Player currentP = players[currentPlayerIndex];
 
+        if (turnTimer != null)
+        {
+            turnTimer.StopTimer();
+            Debug.Log("Đã bấm nút Play: Dừng Timer để xử lý animation.");
+        }
+
         // A. NẾU ĐANG TRÚNG BOOM
         if (IsDefusing)
         {
             // Chỉ chấp nhận thẻ Defuse
             if (cardObj.cardType == DrawPileManager.CardType.Defuse)
             {
+                if (AudioManager.Instance != null)
+                    AudioManager.Instance.PlayWarning(false);
+
                 if (AudioManager.Instance != null)
                     AudioManager.Instance.PlaySFX(AudioManager.Instance.playCardSound);
 
@@ -1455,18 +1480,7 @@ public class GameManager : MonoBehaviour
 
         if (type == DrawPileManager.CardType.Defuse)
         {
-            if (isSelecting)
-            {
-                // DỪNG TIMER NGAY LẬP TỨC KHI CHỌN LÁ DEFUSE
-                if (turnTimer != null) turnTimer.StopTimer();
-                Debug.Log("<color=cyan>ĐÃ DỪNG TIMER 3S. Người chơi đang chọn Defuse.</color>");
-            }
-            else
-            {
-                // BẬT LẠI TIMER TỪ MỐC ĐÃ DỪNG KHI BỎ CHỌN LÁ DEFUSE
-                if (turnTimer != null) turnTimer.StartTimer(turnTimer.CurrentTimeValue, true); // true = Defuse Mode
-                Debug.Log("<color=red>BỎ CHỌN DEFUSE. KÍCH HOẠT LẠI TIMER 3S.</color>");
-            }
+            Debug.Log(isSelecting ? "Đang giữ lá Defuse (Timer vẫn chạy)" : "Đã bỏ chọn Defuse");
         }
     }
     #endregion

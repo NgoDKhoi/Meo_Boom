@@ -867,7 +867,7 @@ MonoBehaviour:
   explodeMasterEffectPrefab: {fileID: 5705259250422523252, guid: d887658f8241cab40a79e59ac908fdd1, type: 3}
   turnTimer: {fileID: 609877755}
   defaultTurnTime: 10
-  defuseTurnTime: 3
+  defuseTurnTime: 5
   discardPileCardScale: {x: 1, y: 1, z: 1}
 --- !u!4 &447230397
 Transform:

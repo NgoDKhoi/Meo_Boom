@@ -11,10 +11,13 @@ public class AudioManager : MonoBehaviour
     [Header("---- Audio Clips ----")]
     public AudioClip themeMusic;
     public AudioClip battleMusic;
-    public AudioClip victoryMusic; // Nhạc ăn mừng chiến thắng
+    public AudioClip victoryMusic; 
     public AudioClip buttonClick;
     public AudioClip drawCardSound;
     public AudioClip playCardSound;
+
+    [Header("---- Warning Settings ----")]
+    public AudioSource warningSource; 
 
     private void Awake()
     {
@@ -63,5 +66,26 @@ public class AudioManager : MonoBehaviour
     public void PlaySFX(AudioClip clip)
     {
         sfxSource.PlayOneShot(clip);
+    }
+
+    public void PlayWarning(bool shouldPlay)
+    {
+        if (shouldPlay)
+        {
+            // Chỉ phát nếu nó chưa kêu để tránh bị lặp đè tiếng
+            if (!warningSource.isPlaying)
+            {
+                warningSource.loop = true;
+                warningSource.Play();
+            }
+        }
+        else
+        {
+            // Dừng ngay lập tức khi không còn dính bom
+            if (warningSource.isPlaying)
+            {
+                warningSource.Stop();
+            }
+        }
     }
 }
